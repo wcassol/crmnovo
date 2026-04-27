@@ -1,0 +1,72 @@
+{
+  "name": "Webhook Sync Now (manual)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sync-now",
+        "responseMode": "onReceived",
+        "responseData": "{ \"ok\": true, \"triggered_at\": \"={{ $now.toISO() }}\" }",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook /sync-now",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "sync-now"
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "name", "value": "Sync Leads WTS" }
+      },
+      "id": "exec1",
+      "name": "Disparar Sync WTS",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "name", "value": "Sync Meta Ads" }
+      },
+      "id": "exec2",
+      "name": "Disparar Sync Meta",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [460, 320]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "name", "value": "Sync Contratos ZapSign" }
+      },
+      "id": "exec3",
+      "name": "Disparar Sync ZapSign",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [460, 440]
+    },
+    {
+      "parameters": {
+        "workflowId": { "__rl": true, "mode": "name", "value": "Sync Reunioes Cal.com" }
+      },
+      "id": "exec4",
+      "name": "Disparar Sync Cal.com",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [460, 560]
+    }
+  ],
+  "connections": {
+    "Webhook /sync-now": {
+      "main": [[
+        { "node": "Disparar Sync WTS", "type": "main", "index": 0 },
+        { "node": "Disparar Sync Meta", "type": "main", "index": 0 },
+        { "node": "Disparar Sync ZapSign", "type": "main", "index": 0 },
+        { "node": "Disparar Sync Cal.com", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["funil", "webhook"]
+}

@@ -1,0 +1,109 @@
+{
+  "name": "Sync Reunioes Cal.com",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "*/30 * * * *" }] }
+      },
+      "id": "schedule",
+      "name": "A cada 30 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.cal.com/v2/bookings",
+        "qs": {
+          "status": "upcoming,past,cancelled",
+          "take": "100"
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "cal-api-version", "value": "2024-08-13" }
+          ]
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "fetchBookings",
+      "name": "Cal.com GET /bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "{{CALCOM_AUTH_CRED_ID}}", "name": "Cal.com Bearer" }
+      }
+    },
+    { "parameters": { "fieldToSplitOut": "data", "options": {} },
+      "id": "splitBookings",
+      "name": "Split bookings",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const b = it.json;\n  const attendee = (b.attendees && b.attendees[0]) || {};\n  let status = 'confirmada';\n  if (b.status === 'cancelled' || b.status === 'CANCELLED') status = 'cancelada';\n  else if (b.status === 'rejected' || b.status === 'REJECTED') status = 'cancelada';\n  else if (b.status === 'no_show' || b.noShow) status = 'no_show';\n  else if (new Date(b.endTime || b.end) < new Date()) status = 'realizada';\n  const meta = b.metadata || {};\n  items.push({ json: {\n    calcom_booking_id: String(b.id || b.uid),\n    nome_cliente: attendee.name || b.title || '',\n    email_cliente: attendee.email || '',\n    telefone_cliente: meta.phone || meta.telefone || '',\n    data_hora: b.start || b.startTime,\n    status,\n    canal: meta.canal || 'cal.com',\n    owner: (b.user && b.user.email) || meta.owner || ''\n  } });\n}\nreturn items;"
+      },
+      "id": "mapBookings",
+      "name": "Mapear bookings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": "reunioes",
+        "columns": "calcom_booking_id,nome_cliente,email_cliente,telefone_cliente,data_hora,status,canal,owner",
+        "conflictColumns": "calcom_booking_id",
+        "options": {}
+      },
+      "id": "upsertReunioes",
+      "name": "Upsert reunioes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1120, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE reunioes r SET tipo_campanha = l.tipo_campanha, lead_id = l.id FROM leads l WHERE r.tipo_campanha IS NULL AND (r.email_cliente = l.telefone OR r.telefone_cliente = l.telefone)"
+      },
+      "id": "linkLeads",
+      "name": "Vincular reunioes a leads",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1340, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "sync_log",
+        "columns": "fonte,status,registros_processados,finalizado_em",
+        "additionalFields": {}
+      },
+      "id": "logSync",
+      "name": "Log sucesso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1560, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    }
+  ],
+  "connections": {
+    "A cada 30 min": { "main": [[{ "node": "Cal.com GET /bookings", "type": "main", "index": 0 }]] },
+    "Cal.com GET /bookings": { "main": [[{ "node": "Split bookings", "type": "main", "index": 0 }]] },
+    "Split bookings": { "main": [[{ "node": "Mapear bookings", "type": "main", "index": 0 }]] },
+    "Mapear bookings": { "main": [[{ "node": "Upsert reunioes", "type": "main", "index": 0 }]] },
+    "Upsert reunioes": { "main": [[{ "node": "Vincular reunioes a leads", "type": "main", "index": 0 }]] },
+    "Vincular reunioes a leads": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["funil", "calcom"]
+}

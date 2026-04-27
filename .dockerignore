@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.local
+.env.production
+.env.development
+README.md
+docs
+n8n
+supabase/migrations
+*.log
+.vscode
+.idea
+coverage

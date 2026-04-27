@@ -1,0 +1,32 @@
+{
+  "name": "Snapshot Diario do Funil",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "5 0 * * *" }] }
+      },
+      "id": "schedule",
+      "name": "Meia noite",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH ontem AS (SELECT (CURRENT_DATE - INTERVAL '1 day')::date AS d), agg_leads AS (SELECT COALESCE(tipo_campanha,'NAO_CLASSIFICADO') AS tipo, COUNT(*) AS leads, COUNT(*) FILTER (WHERE status='Concluido') AS atend FROM leads, ontem WHERE (data_criacao AT TIME ZONE 'America/Sao_Paulo')::date = d GROUP BY tipo_campanha), agg_reunioes AS (SELECT COALESCE(tipo_campanha,'NAO_CLASSIFICADO') AS tipo, COUNT(*) FILTER (WHERE status <> 'cancelada') AS reun FROM reunioes, ontem WHERE (data_hora AT TIME ZONE 'America/Sao_Paulo')::date = d GROUP BY tipo_campanha), agg_contratos AS (SELECT COALESCE(tipo_contrato,'GENERICO') AS tipo, COUNT(*) AS env, COUNT(*) FILTER (WHERE status='Assinado') AS ass, COALESCE(SUM(valor_entrada) FILTER (WHERE status='Assinado'),0) AS receita FROM contratos, ontem WHERE (data_criacao AT TIME ZONE 'America/Sao_Paulo')::date = d GROUP BY tipo_contrato), agg_meta AS (SELECT tipo, SUM(impressoes) AS imp, SUM(alcance) AS alc, SUM(resultados) AS conv, SUM(gasto) AS gasto FROM campanhas_meta GROUP BY tipo), tipos AS (SELECT unnest(ARRAY['APP_MOBILIDADE','SERVIDOR_PUBLICO','NAO_CLASSIFICADO','TOTAL']) AS tipo) INSERT INTO funil_diario (data, tipo_campanha, impressoes, alcance, conversas_meta, leads_wts, leads_atendidos, reunioes_agendadas, contratos_enviados, contratos_assinados, gasto_meta, cpl, cac, receita_entrada, receita_potencial) SELECT (SELECT d FROM ontem), t.tipo, COALESCE(m.imp,0), COALESCE(m.alc,0), COALESCE(m.conv,0), COALESCE(l.leads,0), COALESCE(l.atend,0), COALESCE(r.reun,0), COALESCE(c.env,0), COALESCE(c.ass,0), COALESCE(m.gasto,0), CASE WHEN COALESCE(l.leads,0) > 0 THEN COALESCE(m.gasto,0)/l.leads ELSE 0 END, CASE WHEN COALESCE(c.ass,0) > 0 THEN COALESCE(m.gasto,0)/c.ass ELSE 0 END, COALESCE(c.receita,0), COALESCE(c.ass,0) * 3000 FROM tipos t LEFT JOIN agg_leads l ON l.tipo = t.tipo LEFT JOIN agg_reunioes r ON r.tipo = t.tipo LEFT JOIN agg_contratos c ON c.tipo = t.tipo LEFT JOIN agg_meta m ON m.tipo = t.tipo ON CONFLICT (data, tipo_campanha) DO UPDATE SET impressoes = EXCLUDED.impressoes, alcance = EXCLUDED.alcance, conversas_meta = EXCLUDED.conversas_meta, leads_wts = EXCLUDED.leads_wts, leads_atendidos = EXCLUDED.leads_atendidos, reunioes_agendadas = EXCLUDED.reunioes_agendadas, contratos_enviados = EXCLUDED.contratos_enviados, contratos_assinados = EXCLUDED.contratos_assinados, gasto_meta = EXCLUDED.gasto_meta, cpl = EXCLUDED.cpl, cac = EXCLUDED.cac, receita_entrada = EXCLUDED.receita_entrada, receita_potencial = EXCLUDED.receita_potencial;"
+      },
+      "id": "snapshot",
+      "name": "Inserir snapshot",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [460, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    }
+  ],
+  "connections": {
+    "Meia noite": { "main": [[{ "node": "Inserir snapshot", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["funil", "snapshot"]
+}

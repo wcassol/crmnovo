@@ -1,0 +1,90 @@
+{
+  "name": "Webhook Meta Lead Ads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "meta-leads",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook /meta-leads",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "meta-leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst entries = body.entry || [];\nconst out = [];\nfor (const e of entries) {\n  for (const ch of (e.changes || [])) {\n    if (ch.field === 'leadgen' && ch.value?.leadgen_id) {\n      out.push({ json: { leadgen_id: ch.value.leadgen_id, page_id: ch.value.page_id, ad_id: ch.value.ad_id, campaign_id: ch.value.campaign_id } });\n    }\n  }\n}\nreturn out.length ? out : [{ json: { skip: true } }];"
+      },
+      "id": "extractLeads",
+      "name": "Extrair leadgen_ids",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "loose" },
+          "conditions": [
+            { "id": "1", "leftValue": "={{$json.skip}}", "rightValue": "true", "operator": { "type": "string", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "filterValid",
+      "name": "Filtrar validos",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{$json.leadgen_id}}",
+        "qs": { "access_token": "={{$env.META_ACCESS_TOKEN}}" }
+      },
+      "id": "fetchLead",
+      "name": "Meta GET /leadgen_id",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const lead = it.json;\n  const fields = {};\n  for (const f of (lead.field_data || [])) fields[f.name] = (f.values && f.values[0]) || '';\n  const utm = (lead.ad_name || lead.campaign_name || '').toUpperCase();\n  let tipo = 'NAO_CLASSIFICADO';\n  if (utm.includes('UBER') || utm.includes('99') || utm.includes('MOTORISTA') || utm.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (utm.includes('SERVIDOR') || utm.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  items.push({ json: {\n    wts_session_id: 'meta-' + lead.id,\n    nome: fields.full_name || fields.nome || fields.name || '',\n    telefone: fields.phone_number || fields.telefone || '',\n    status: 'Pendente',\n    utm_source: 'FACEBOOK',\n    utm_medium: 'LEAD_AD',\n    utm_campaign: lead.campaign_id || '',\n    utm_content: lead.ad_name || '',\n    primeira_mensagem: '',\n    data_criacao: lead.created_time\n  } });\n}\nreturn items;"
+      },
+      "id": "mapLead",
+      "name": "Mapear lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": "leads",
+        "columns": "wts_session_id,nome,telefone,status,utm_source,utm_medium,utm_campaign,utm_content,primeira_mensagem,data_criacao",
+        "conflictColumns": "wts_session_id",
+        "options": {}
+      },
+      "id": "upsertLead",
+      "name": "Upsert lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1340, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    }
+  ],
+  "connections": {
+    "Webhook /meta-leads": { "main": [[{ "node": "Extrair leadgen_ids", "type": "main", "index": 0 }]] },
+    "Extrair leadgen_ids": { "main": [[{ "node": "Filtrar validos", "type": "main", "index": 0 }]] },
+    "Filtrar validos": { "main": [[{ "node": "Meta GET /leadgen_id", "type": "main", "index": 0 }]] },
+    "Meta GET /leadgen_id": { "main": [[{ "node": "Mapear lead", "type": "main", "index": 0 }]] },
+    "Mapear lead": { "main": [[{ "node": "Upsert lead", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["funil", "meta", "webhook"]
+}

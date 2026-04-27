@@ -1,0 +1,88 @@
+{
+  "name": "Sync Meta Ads",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }] }
+      },
+      "id": "schedule",
+      "name": "A cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{$env.META_AD_ACCOUNT_ID}}/insights",
+        "qs": {
+          "fields": "campaign_name,campaign_id,impressions,reach,clicks,spend,actions,cost_per_action_type",
+          "date_preset": "this_month",
+          "level": "campaign",
+          "limit": "200",
+          "access_token": "={{$env.META_ACCESS_TOKEN}}"
+        },
+        "options": {}
+      },
+      "id": "fetchInsights",
+      "name": "Meta GET /insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    { "parameters": { "fieldToSplitOut": "data", "options": {} },
+      "id": "splitCamp",
+      "name": "Split campanhas",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const c = it.json;\n  const nome = c.campaign_name || '';\n  let tipo = 'NAO_CLASSIFICADO';\n  const u = nome.toUpperCase();\n  if (u.includes('UBER') || u.includes('99') || u.includes('INDRIVE') || u.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (u.includes('NAV') || u.includes('SERV') || u.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  const conversas = (c.actions || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d')?.value;\n  const cprObj = (c.cost_per_action_type || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d');\n  const impressoes = Number(c.impressions || 0);\n  const cliques = Number(c.clicks || 0);\n  items.push({ json: {\n    campaign_id: c.campaign_id,\n    nome,\n    tipo,\n    status: 'ACTIVE',\n    impressoes,\n    alcance: Number(c.reach || 0),\n    cliques,\n    resultados: Number(conversas || 0),\n    gasto: Number(c.spend || 0),\n    cpr: Number(cprObj?.value || 0),\n    cpm: impressoes > 0 ? (Number(c.spend || 0) / impressoes) * 1000 : 0,\n    ctr: impressoes > 0 ? cliques / impressoes : 0,\n    raw_actions: JSON.stringify(c.actions || [])\n  } });\n}\nreturn items;"
+      },
+      "id": "mapMeta",
+      "name": "Classificar tipo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": "campanhas_meta",
+        "columns": "campaign_id,nome,tipo,status,impressoes,alcance,cliques,resultados,gasto,cpr,cpm,ctr,raw_actions",
+        "conflictColumns": "campaign_id",
+        "options": {}
+      },
+      "id": "upsertCamp",
+      "name": "Upsert campanhas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1120, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "sync_log",
+        "columns": "fonte,status,registros_processados,finalizado_em",
+        "additionalFields": {}
+      },
+      "id": "logSync",
+      "name": "Log sucesso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [1340, 300],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    }
+  ],
+  "connections": {
+    "A cada hora": { "main": [[{ "node": "Meta GET /insights", "type": "main", "index": 0 }]] },
+    "Meta GET /insights": { "main": [[{ "node": "Split campanhas", "type": "main", "index": 0 }]] },
+    "Split campanhas": { "main": [[{ "node": "Classificar tipo", "type": "main", "index": 0 }]] },
+    "Classificar tipo": { "main": [[{ "node": "Upsert campanhas", "type": "main", "index": 0 }]] },
+    "Upsert campanhas": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["funil", "meta"]
+}

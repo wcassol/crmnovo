@@ -1,0 +1,256 @@
+import { SupabaseClient } from '@supabase/supabase-js';
+import { TipoCampanha } from './types';
+import { calcularKPIs, FunilTotais } from './metrics';
+
+export interface PeriodoFiltro {
+  from: string;
+  to: string;
+  tipoCampanha?: TipoCampanha | 'TODOS';
+}
+
+function aplicaTipoFiltro<T>(query: any, tipo?: TipoCampanha | 'TODOS', col = 'tipo_campanha') {
+  if (!tipo || tipo === 'TODOS') return query;
+  return query.eq(col, tipo);
+}
+
+export async function buscarFunilTotais(
+  supabase: SupabaseClient,
+  filtro: PeriodoFiltro,
+): Promise<FunilTotais> {
+  const { from, to, tipoCampanha } = filtro;
+
+  const [
+    leadsResp,
+    leadsAtendidosResp,
+    reunioesResp,
+    contratosEnviadosResp,
+    contratosAssinadosResp,
+    campanhasResp,
+  ] = await Promise.all([
+    aplicaTipoFiltro(
+      supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_criacao', from)
+        .lte('data_criacao', to),
+      tipoCampanha,
+    ),
+    aplicaTipoFiltro(
+      supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_criacao', from)
+        .lte('data_criacao', to)
+        .eq('status', 'Concluido'),
+      tipoCampanha,
+    ),
+    aplicaTipoFiltro(
+      supabase
+        .from('reunioes')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_hora', from)
+        .lte('data_hora', to)
+        .neq('status', 'cancelada'),
+      tipoCampanha,
+    ),
+    aplicaTipoFiltro(
+      supabase
+        .from('contratos')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_criacao', from)
+        .lte('data_criacao', to),
+      tipoCampanha,
+      'tipo_contrato',
+    ),
+    aplicaTipoFiltro(
+      supabase
+        .from('contratos')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_criacao', from)
+        .lte('data_criacao', to)
+        .eq('status', 'Assinado'),
+      tipoCampanha,
+      'tipo_contrato',
+    ),
+    aplicaTipoFiltro(
+      supabase
+        .from('campanhas_meta')
+        .select('impressoes, alcance, resultados, gasto'),
+      tipoCampanha,
+      'tipo',
+    ),
+  ]);
+
+  const camp = campanhasResp.data ?? [];
+  const impressoes = camp.reduce((s: number, c: any) => s + (c.impressoes ?? 0), 0);
+  const alcance = camp.reduce((s: number, c: any) => s + (c.alcance ?? 0), 0);
+  const conversasMeta = camp.reduce((s: number, c: any) => s + (c.resultados ?? 0), 0);
+  const gastoMeta = camp.reduce((s: number, c: any) => s + Number(c.gasto ?? 0), 0);
+
+  return {
+    impressoes,
+    alcance,
+    conversasMeta,
+    leadsWts: leadsResp.count ?? 0,
+    leadsAtendidos: leadsAtendidosResp.count ?? 0,
+    reunioesAgendadas: reunioesResp.count ?? 0,
+    contratosEnviados: contratosEnviadosResp.count ?? 0,
+    contratosAssinados: contratosAssinadosResp.count ?? 0,
+    gastoMeta,
+  };
+}
+
+export async function buscarKPIs(supabase: SupabaseClient, filtro: PeriodoFiltro) {
+  const totais = await buscarFunilTotais(supabase, filtro);
+  return { totais, kpis: calcularKPIs(totais) };
+}
+
+export async function buscarLeadsPorDia(
+  supabase: SupabaseClient,
+  filtro: PeriodoFiltro,
+) {
+  const { data } = await supabase
+    .from('leads')
+    .select('data_criacao, tipo_campanha, status')
+    .gte('data_criacao', filtro.from)
+    .lte('data_criacao', filtro.to)
+    .not('data_criacao', 'is', null);
+
+  const buckets = new Map<string, Record<string, number>>();
+  for (const row of data ?? []) {
+    if (!row.data_criacao) continue;
+    const dia = row.data_criacao.slice(0, 10);
+    const tipo = row.tipo_campanha ?? 'NAO_CLASSIFICADO';
+    if (!buckets.has(dia)) {
+      buckets.set(dia, {
+        APP_MOBILIDADE: 0,
+        SERVIDOR_PUBLICO: 0,
+        NAO_CLASSIFICADO: 0,
+      });
+    }
+    const b = buckets.get(dia)!;
+    b[tipo] = (b[tipo] ?? 0) + 1;
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dia, counts]) => ({ dia, ...counts }));
+}
+
+export async function buscarCampanhas(
+  supabase: SupabaseClient,
+  tipo?: TipoCampanha | 'TODOS',
+) {
+  let q = supabase
+    .from('campanhas_meta')
+    .select('*')
+    .order('gasto', { ascending: false });
+  if (tipo && tipo !== 'TODOS') q = q.eq('tipo', tipo);
+  const { data } = await q;
+  return data ?? [];
+}
+
+export async function buscarLeads(
+  supabase: SupabaseClient,
+  filtros: {
+    from: string;
+    to: string;
+    status?: string;
+    tipo?: string;
+    prefixo?: string;
+    fonte?: string;
+    busca?: string;
+    limit?: number;
+    offset?: number;
+  },
+) {
+  let q = supabase
+    .from('leads')
+    .select('*', { count: 'exact' })
+    .gte('data_criacao', filtros.from)
+    .lte('data_criacao', filtros.to)
+    .order('data_criacao', { ascending: false });
+
+  if (filtros.status && filtros.status !== 'TODOS') q = q.eq('status', filtros.status);
+  if (filtros.tipo && filtros.tipo !== 'TODOS') q = q.eq('tipo_campanha', filtros.tipo);
+  if (filtros.prefixo && filtros.prefixo !== 'TODOS')
+    q = q.eq('prefixo_criativo', filtros.prefixo);
+  if (filtros.fonte && filtros.fonte !== 'TODOS') q = q.eq('utm_source', filtros.fonte);
+  if (filtros.busca) {
+    q = q.or(
+      `nome.ilike.%${filtros.busca}%,telefone.ilike.%${filtros.busca}%,primeira_mensagem.ilike.%${filtros.busca}%`,
+    );
+  }
+  const limit = filtros.limit ?? 100;
+  const offset = filtros.offset ?? 0;
+  q = q.range(offset, offset + limit - 1);
+
+  const { data, count } = await q;
+  return { rows: data ?? [], total: count ?? 0 };
+}
+
+export async function buscarContratos(
+  supabase: SupabaseClient,
+  filtros: { from: string; to: string; tipo?: string; status?: string },
+) {
+  let q = supabase
+    .from('contratos')
+    .select('*')
+    .gte('data_criacao', filtros.from)
+    .lte('data_criacao', filtros.to)
+    .order('data_criacao', { ascending: false });
+  if (filtros.tipo && filtros.tipo !== 'TODOS') q = q.eq('tipo_contrato', filtros.tipo);
+  if (filtros.status && filtros.status !== 'TODOS') q = q.eq('status', filtros.status);
+  const { data } = await q;
+  return data ?? [];
+}
+
+export async function buscarCriativosResumo(
+  supabase: SupabaseClient,
+  filtro: PeriodoFiltro,
+) {
+  const { data } = await supabase
+    .from('leads')
+    .select('prefixo_criativo, status, data_criacao')
+    .gte('data_criacao', filtro.from)
+    .lte('data_criacao', filtro.to);
+
+  const grupos: Record<string, { total: number; atendidos: number; porDia: Map<string, number> }> = {
+    PP: { total: 0, atendidos: 0, porDia: new Map() },
+    ABE: { total: 0, atendidos: 0, porDia: new Map() },
+    SEG: { total: 0, atendidos: 0, porDia: new Map() },
+    SEM_PREFIXO: { total: 0, atendidos: 0, porDia: new Map() },
+  };
+  for (const row of data ?? []) {
+    const key = row.prefixo_criativo ?? 'SEM_PREFIXO';
+    if (!grupos[key]) continue;
+    grupos[key].total += 1;
+    if (row.status === 'Concluido') grupos[key].atendidos += 1;
+    if (row.data_criacao) {
+      const d = row.data_criacao.slice(0, 10);
+      grupos[key].porDia.set(d, (grupos[key].porDia.get(d) ?? 0) + 1);
+    }
+  }
+
+  const dias = new Set<string>();
+  for (const g of Object.values(grupos)) for (const d of g.porDia.keys()) dias.add(d);
+  const evolucao = Array.from(dias)
+    .sort()
+    .map((dia) => ({
+      dia,
+      PP: grupos.PP.porDia.get(dia) ?? 0,
+      ABE: grupos.ABE.porDia.get(dia) ?? 0,
+      SEG: grupos.SEG.porDia.get(dia) ?? 0,
+      SEM_PREFIXO: grupos.SEM_PREFIXO.porDia.get(dia) ?? 0,
+    }));
+
+  return {
+    cards: Object.entries(grupos).map(([prefixo, g]) => ({
+      prefixo,
+      total: g.total,
+      atendidos: g.atendidos,
+      taxaAtendimento: g.total ? g.atendidos / g.total : 0,
+      mediaDia: g.porDia.size ? g.total / g.porDia.size : 0,
+    })),
+    evolucao,
+  };
+}
