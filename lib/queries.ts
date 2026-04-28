@@ -75,7 +75,9 @@ export async function buscarFunilTotais(
     aplicaTipoFiltro(
       supabase
         .from('campanhas_meta')
-        .select('impressoes, alcance, resultados, gasto'),
+        .select('impressoes, alcance, resultados, gasto')
+        .gte('data_inicio', from)
+        .lte('data_inicio', to),
       tipoCampanha,
       'tipo',
     ),
