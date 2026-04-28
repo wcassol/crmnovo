@@ -27,6 +27,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
+Para o passo a passo completo de implementacao em producao
+(Supabase, n8n, Easypanel, dominio, webhook Meta), veja
+[`docs/IMPLEMENTACAO.md`](docs/IMPLEMENTACAO.md).
+
 Aplique as migrations no Supabase (psql ou SQL Editor):
 
 ```bash
