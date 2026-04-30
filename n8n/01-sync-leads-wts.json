@@ -89,24 +89,24 @@
     {
       "parameters": {
         "mode": "manual",
-        "include": "specifiedFields",
-        "fieldsToInclude": {
-          "values": [
-            { "name": "wts_session_id", "value": "={{$json.id}}" },
-            { "name": "nome", "value": "={{$json.contactDetails?.name || $json.title || ''}}" },
-            { "name": "telefone", "value": "={{$json.contactDetails?.phonenumberFormatted || $json.contactDetails?.phonenumber || $json.number || ''}}" },
-            { "name": "status", "value": "={{ ({UNDEFINED:'Pendente',STARTED:'Pendente',PENDING:'Pendente',IN_PROGRESS:'Em andamento',COMPLETED:'Concluido',HIDDEN:'Pendente'})[$json.status] || 'Pendente' }}" },
-            { "name": "utm_source", "value": "={{$json.utm?.source || ''}}" },
-            { "name": "utm_medium", "value": "={{$json.utm?.medium || ''}}" },
-            { "name": "utm_campaign", "value": "={{$json.utm?.campaign || ''}}" },
-            { "name": "utm_content", "value": "={{$json.utm?.content || ''}}" },
-            { "name": "primeira_mensagem", "value": "={{$json.lastMessageText || ''}}" },
-            { "name": "data_criacao", "value": "={{$json.createdAt}}" },
-            { "name": "data_primeira_mensagem", "value": "={{$json.startAt || $json.createdAt}}" },
-            { "name": "data_ultima_mensagem", "value": "={{$json.lastInteractionDate || $json.lastMessageIn || $json.lastMessageOut || $json.updatedAt || $json.createdAt}}" },
-            { "name": "tempo_atendimento_min", "value": "={{$json.timeService ? Number($json.timeService)/60 : null}}" }
+        "assignments": {
+          "assignments": [
+            { "id": "f1", "name": "wts_session_id", "value": "={{$json.id}}", "type": "string" },
+            { "id": "f2", "name": "nome", "value": "={{$json.contactDetails?.name || $json.title || ''}}", "type": "string" },
+            { "id": "f3", "name": "telefone", "value": "={{$json.contactDetails?.phonenumberFormatted || $json.contactDetails?.phonenumber || $json.number || ''}}", "type": "string" },
+            { "id": "f4", "name": "status", "value": "={{ ({UNDEFINED:'Pendente',STARTED:'Pendente',PENDING:'Pendente',IN_PROGRESS:'Em andamento',COMPLETED:'Concluido',HIDDEN:'Pendente'})[$json.status] || 'Pendente' }}", "type": "string" },
+            { "id": "f5", "name": "utm_source", "value": "={{$json.utm?.source || ''}}", "type": "string" },
+            { "id": "f6", "name": "utm_medium", "value": "={{$json.utm?.medium || ''}}", "type": "string" },
+            { "id": "f7", "name": "utm_campaign", "value": "={{$json.utm?.campaign || ''}}", "type": "string" },
+            { "id": "f8", "name": "utm_content", "value": "={{$json.utm?.content || ''}}", "type": "string" },
+            { "id": "f9", "name": "primeira_mensagem", "value": "={{$json.lastMessageText || ''}}", "type": "string" },
+            { "id": "f10", "name": "data_criacao", "value": "={{$json.createdAt}}", "type": "string" },
+            { "id": "f11", "name": "data_primeira_mensagem", "value": "={{$json.startAt || $json.createdAt}}", "type": "string" },
+            { "id": "f12", "name": "data_ultima_mensagem", "value": "={{$json.lastInteractionDate || $json.lastMessageIn || $json.lastMessageOut || $json.updatedAt || $json.createdAt}}", "type": "string" },
+            { "id": "f13", "name": "tempo_atendimento_min", "value": "={{$json.timeService ? Number($json.timeService)/60 : null}}", "type": "number" }
           ]
         },
+        "includeOtherFields": false,
         "options": {}
       },
       "id": "mapearLead",
