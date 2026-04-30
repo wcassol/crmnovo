@@ -28,16 +28,8 @@
     },
     {
       "parameters": {
-        "operation": "select",
-        "table": "sync_log",
-        "where": {
-          "values": [
-            { "column": "fonte", "value": "wts" },
-            { "column": "status", "value": "sucesso" }
-          ]
-        },
-        "sort": { "values": [{ "column": "finalizado_em", "direction": "DESC" }] },
-        "limit": 1
+        "operation": "executeQuery",
+        "query": "SELECT finalizado_em FROM sync_log WHERE fonte = 'wts' AND status = 'sucesso' ORDER BY finalizado_em DESC LIMIT 1"
       },
       "id": "ultimaSync",
       "name": "Ultima sync WTS",
@@ -116,9 +108,12 @@
     {
       "parameters": {
         "operation": "upsert",
-        "table": "leads",
-        "columns": "wts_session_id,nome,telefone,status,utm_source,utm_medium,utm_campaign,utm_content,primeira_mensagem,data_criacao,data_primeira_mensagem,data_ultima_mensagem,tempo_atendimento_min",
-        "conflictColumns": "wts_session_id",
+        "schema": { "__rl": true, "value": "public", "mode": "list" },
+        "table": { "__rl": true, "value": "leads", "mode": "list" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["wts_session_id"]
+        },
         "options": {}
       },
       "id": "upsertLeads",

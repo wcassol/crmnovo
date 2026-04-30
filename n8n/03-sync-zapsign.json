@@ -55,9 +55,12 @@
     {
       "parameters": {
         "operation": "upsert",
-        "table": "contratos",
-        "columns": "zapsign_doc_id,nome_documento,tipo_contrato,status,data_criacao,data_assinatura",
-        "conflictColumns": "zapsign_doc_id",
+        "schema": { "__rl": true, "value": "public", "mode": "list" },
+        "table": { "__rl": true, "value": "contratos", "mode": "list" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["zapsign_doc_id"]
+        },
         "options": {}
       },
       "id": "upsertContratos",

@@ -71,9 +71,12 @@
     {
       "parameters": {
         "operation": "upsert",
-        "table": "leads",
-        "columns": "wts_session_id,nome,telefone,status,utm_source,utm_medium,utm_campaign,utm_content,primeira_mensagem,data_criacao",
-        "conflictColumns": "wts_session_id",
+        "schema": { "__rl": true, "value": "public", "mode": "list" },
+        "table": { "__rl": true, "value": "leads", "mode": "list" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["wts_session_id"]
+        },
         "options": {}
       },
       "id": "upsertLead",

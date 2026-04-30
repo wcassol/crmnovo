@@ -60,9 +60,12 @@
     {
       "parameters": {
         "operation": "upsert",
-        "table": "campanhas_meta",
-        "columns": "campaign_id,nome,tipo,status,impressoes,alcance,cliques,resultados,gasto,cpr,cpm,ctr,raw_actions",
-        "conflictColumns": "campaign_id",
+        "schema": { "__rl": true, "value": "public", "mode": "list" },
+        "table": { "__rl": true, "value": "campanhas_meta", "mode": "list" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["campaign_id"]
+        },
         "options": {}
       },
       "id": "upsertCamp",

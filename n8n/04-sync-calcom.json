@@ -64,9 +64,12 @@
     {
       "parameters": {
         "operation": "upsert",
-        "table": "reunioes",
-        "columns": "calcom_booking_id,nome_cliente,email_cliente,telefone_cliente,data_hora,status,canal,owner",
-        "conflictColumns": "calcom_booking_id",
+        "schema": { "__rl": true, "value": "public", "mode": "list" },
+        "table": { "__rl": true, "value": "reunioes", "mode": "list" },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "matchingColumns": ["calcom_booking_id"]
+        },
         "options": {}
       },
       "id": "upsertReunioes",
