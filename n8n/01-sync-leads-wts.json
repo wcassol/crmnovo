@@ -16,7 +16,15 @@
       "name": "Cada 15 minutos",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [240, 200]
+    },
+    {
+      "parameters": {},
+      "id": "execTrigger",
+      "name": "Quando chamado por outro fluxo",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
     },
     {
       "parameters": {
@@ -122,27 +130,40 @@
     },
     {
       "parameters": {
-        "operation": "insert",
-        "table": "sync_log",
-        "columns": "fonte,status,registros_processados,finalizado_em",
-        "additionalFields": {}
+        "jsCode": "return [{ json: { fonte: 'wts', count: $input.all().length } }];"
+      },
+      "id": "contarRegistros",
+      "name": "Contar registros",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ($1, 'sucesso', $2, NOW())",
+        "additionalFields": {
+          "queryParams": "={{$json.fonte}},{{$json.count}}"
+        }
       },
       "id": "logSync",
       "name": "Log sucesso",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1780, 300],
+      "position": [2000, 300],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
     }
   ],
   "connections": {
     "Cada 15 minutos": { "main": [[{ "node": "Ultima sync WTS", "type": "main", "index": 0 }]] },
+    "Quando chamado por outro fluxo": { "main": [[{ "node": "Ultima sync WTS", "type": "main", "index": 0 }]] },
     "Ultima sync WTS": { "main": [[{ "node": "Calcula since", "type": "main", "index": 0 }]] },
     "Calcula since": { "main": [[{ "node": "WTS GET /sessions", "type": "main", "index": 0 }]] },
     "WTS GET /sessions": { "main": [[{ "node": "Split sessoes", "type": "main", "index": 0 }]] },
     "Split sessoes": { "main": [[{ "node": "Mapear -> leads", "type": "main", "index": 0 }]] },
     "Mapear -> leads": { "main": [[{ "node": "Upsert leads", "type": "main", "index": 0 }]] },
-    "Upsert leads": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+    "Upsert leads": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
+    "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "wts"]

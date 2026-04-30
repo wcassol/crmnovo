@@ -9,13 +9,20 @@
       "name": "A cada 30 min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [240, 200]
+    },
+    {
+      "parameters": {},
+      "id": "execTrigger",
+      "name": "Quando chamado por outro fluxo",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [240, 400]
     },
     {
       "parameters": {
         "url": "=https://api.cal.com/v2/bookings",
         "qs": {
-          "status": "upcoming,past,cancelled",
           "take": "100"
         },
         "sendHeaders": true,
@@ -46,7 +53,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const b = it.json;\n  const attendee = (b.attendees && b.attendees[0]) || {};\n  let status = 'confirmada';\n  if (b.status === 'cancelled' || b.status === 'CANCELLED') status = 'cancelada';\n  else if (b.status === 'rejected' || b.status === 'REJECTED') status = 'cancelada';\n  else if (b.status === 'no_show' || b.noShow) status = 'no_show';\n  else if (new Date(b.endTime || b.end) < new Date()) status = 'realizada';\n  const meta = b.metadata || {};\n  items.push({ json: {\n    calcom_booking_id: String(b.id || b.uid),\n    nome_cliente: attendee.name || b.title || '',\n    email_cliente: attendee.email || '',\n    telefone_cliente: meta.phone || meta.telefone || '',\n    data_hora: b.start || b.startTime,\n    status,\n    canal: meta.canal || 'cal.com',\n    owner: (b.user && b.user.email) || meta.owner || ''\n  } });\n}\nreturn items;"
+        "jsCode": "const items = [];\nconst onlyDigits = (s) => String(s || '').replace(/\\D+/g, '');\nfor (const it of $input.all()) {\n  const b = it.json;\n  const attendee = (b.attendees && b.attendees[0]) || {};\n  let status = 'confirmada';\n  if (b.status === 'cancelled' || b.status === 'CANCELLED') status = 'cancelada';\n  else if (b.status === 'rejected' || b.status === 'REJECTED') status = 'cancelada';\n  else if (b.status === 'no_show' || b.noShow) status = 'no_show';\n  else if (new Date(b.endTime || b.end) < new Date()) status = 'realizada';\n  const meta = b.metadata || {};\n  const telefone = onlyDigits(meta.phone || meta.telefone || '');\n  items.push({ json: {\n    calcom_booking_id: String(b.id || b.uid),\n    nome_cliente: attendee.name || b.title || '',\n    email_cliente: attendee.email || '',\n    telefone_cliente: telefone,\n    data_hora: b.start || b.startTime,\n    status,\n    canal: meta.canal || 'cal.com',\n    owner: (b.user && b.user.email) || meta.owner || ''\n  } });\n}\nreturn items;"
       },
       "id": "mapBookings",
       "name": "Mapear bookings",
@@ -72,7 +79,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE reunioes r SET tipo_campanha = l.tipo_campanha, lead_id = l.id FROM leads l WHERE r.tipo_campanha IS NULL AND (r.email_cliente = l.telefone OR r.telefone_cliente = l.telefone)"
+        "query": "UPDATE reunioes r SET tipo_campanha = l.tipo_campanha, lead_id = l.id FROM leads l WHERE r.lead_id IS NULL AND regexp_replace(r.telefone_cliente, '\\D', '', 'g') = regexp_replace(l.telefone, '\\D', '', 'g') AND length(regexp_replace(r.telefone_cliente, '\\D', '', 'g')) >= 10"
       },
       "id": "linkLeads",
       "name": "Vincular reunioes a leads",
@@ -83,26 +90,39 @@
     },
     {
       "parameters": {
-        "operation": "insert",
-        "table": "sync_log",
-        "columns": "fonte,status,registros_processados,finalizado_em",
-        "additionalFields": {}
+        "jsCode": "return [{ json: { fonte: 'calcom', count: $input.all().length } }];"
+      },
+      "id": "contarRegistros",
+      "name": "Contar registros",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ($1, 'sucesso', $2, NOW())",
+        "additionalFields": {
+          "queryParams": "={{$json.fonte}},{{$json.count}}"
+        }
       },
       "id": "logSync",
       "name": "Log sucesso",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1560, 300],
+      "position": [1780, 300],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
     }
   ],
   "connections": {
     "A cada 30 min": { "main": [[{ "node": "Cal.com GET /bookings", "type": "main", "index": 0 }]] },
+    "Quando chamado por outro fluxo": { "main": [[{ "node": "Cal.com GET /bookings", "type": "main", "index": 0 }]] },
     "Cal.com GET /bookings": { "main": [[{ "node": "Split bookings", "type": "main", "index": 0 }]] },
     "Split bookings": { "main": [[{ "node": "Mapear bookings", "type": "main", "index": 0 }]] },
     "Mapear bookings": { "main": [[{ "node": "Upsert reunioes", "type": "main", "index": 0 }]] },
     "Upsert reunioes": { "main": [[{ "node": "Vincular reunioes a leads", "type": "main", "index": 0 }]] },
-    "Vincular reunioes a leads": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+    "Vincular reunioes a leads": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
+    "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "calcom"]
