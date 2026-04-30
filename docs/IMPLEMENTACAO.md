@@ -376,28 +376,19 @@ Variaveis dos tokens externos (`WTS_API_TOKEN`, `META_ACCESS_TOKEN`
 etc.) nao precisam estar no frontend, pois o frontend nunca chama
 essas APIs diretamente; quem fala com elas e o n8n.
 
-### 8.3.1 IMPORTANTE: Build Args do Docker
+### 8.3.1 Como as variaveis NEXT_PUBLIC_* funcionam aqui
 
-As variaveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-sao embutidas no bundle JavaScript que roda no navegador, em build time.
-Variaveis configuradas apenas em `Environment` so existem no runtime do
-servidor; o cliente browser nao enxerga, e o login fica preso em
-`Entrando...` indefinidamente.
+O projeto usa injecao em runtime, nao em build time. O server component
+`components/runtime-config-script.tsx` le `process.env.NEXT_PUBLIC_*`
+em cada request e gera um `<script>window.__PUBLIC_CONFIG__ = {...}</script>`
+no `<head>`. O cliente browser le esse global em vez de
+`process.env`. Isso evita ter que configurar Build Args no Docker
+(o Easypanel v2 nem expoe essa opcao na UI).
 
-No Easypanel, va em `Build > Build Args` (ou `Advanced > Build Args`,
-depende da versao) e adicione exatamente os mesmos valores:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=https://supabase.zapconnecta.com
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
-```
-
-Se o servico ja foi criado sem isso, edite os Build Args, salve e
-clique em `Rebuild` (nao apenas `Redeploy`, que reaproveita a imagem).
-Para confirmar, abra o navegador, F12 > Network, tente logar e veja
-se o request sai para `https://supabase.zapconnecta.com/auth/v1/token`.
-Se sair para `undefined/auth/v1/...` ou para a propria URL do dashboard,
-os Build Args nao foram aplicados.
+Consequencia pratica: basta adicionar `NEXT_PUBLIC_SUPABASE_URL` e
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` em `Variaveis de Ambiente` (como ja
+foi feito em 8.3) e dar `Implantar`. Nao precisa Rebuild, basta
+restart do container, porque a injecao e em runtime.
 
 ### 8.4 Build e deploy
 
@@ -529,29 +520,33 @@ nao estiver configurado no Supabase).
 
 Sintoma: o botao vira `Entrando...` e nunca volta, sem mensagem de erro.
 
-Causa quase certa: as variaveis `NEXT_PUBLIC_SUPABASE_URL` e
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` nao foram passadas como Build Args do
-Docker, entao foram embutidas como `undefined` no bundle do navegador.
+Causa: as variaveis `NEXT_PUBLIC_SUPABASE_URL` e
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` nao chegaram ao cliente, ou estao com
+valor errado. O cliente le essas vars do `<script>window.__PUBLIC_CONFIG__`
+injetado pelo servidor em cada request.
 
 Como confirmar:
 
-1. Abra o site, F12 > `Console`. Voce deve ver um `Error: Configuracao
-   do Supabase ausente no bundle do cliente`.
-2. Ou em `Network`, ao clicar `Entrar`, o request vai para uma URL
-   estranha (`undefined/auth/v1/token` ou para a propria URL do
-   dashboard) em vez de `https://supabase.zapconnecta.com/...`.
+1. Abra o site, F12 > `Console`. Voce deve ver `Error: Configuracao
+   publica ausente`. Ou veja `Sources > view-source` no `<head>` se
+   o `<script id="public-config">` esta com os valores corretos.
+2. Em `Network`, ao clicar `Entrar`, o request POST deve sair para
+   `https://supabase.zapconnecta.com/auth/v1/token`. Se sair para
+   outro lugar ou nao sair, a config esta errada.
 
 Como corrigir:
 
-1. No Easypanel, abra o servico `wcassol-funil-dashboard`.
-2. Va em `Build > Build Args` (algumas versoes chamam de `Build
-   Variables` ou ficam em `Advanced`).
-3. Adicione, com os mesmos valores que estao em `Environment`:
+1. No Easypanel, abra o servico `wcassol-funil-dashboard > Ambiente`.
+2. Confirme que existem, com os valores corretos:
    - `NEXT_PUBLIC_SUPABASE_URL=https://supabase.zapconnecta.com`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...`
-4. Salve e clique em `Rebuild` (nao `Redeploy`, que reaproveita a
-   imagem antiga).
-5. Aguarde o build terminar e teste o login outra vez.
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...` (a anon key, nao
+     a service_role).
+3. Confirme que o `SUPABASE_SERVICE_ROLE_KEY` e diferente da anon
+   (decodifique em jwt.io: a anon tem `"role":"anon"`, a service tem
+   `"role":"service_role"`). Se voce colou a anon nas duas, o login
+   funciona mas as queries server-side podem falhar.
+4. Salve e clique em `Implantar`. Como a injecao e em runtime, nao
+   precisa Rebuild; um restart do container ja basta.
 
 ### `RealtimeRefresher` nao atualiza nada
 

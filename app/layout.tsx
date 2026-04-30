@@ -1,5 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { RuntimeConfigScript } from '@/components/runtime-config-script';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Funil Wendrill Cassol Advogados',
@@ -14,6 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <RuntimeConfigScript />
+      </head>
       <body className="min-h-screen bg-brand-surface antialiased">{children}</body>
     </html>
   );
