@@ -22,12 +22,15 @@
     {
       "parameters": {
         "url": "=https://graph.facebook.com/v21.0/{{$env.META_AD_ACCOUNT_ID}}/insights",
-        "qs": {
-          "fields": "campaign_name,campaign_id,impressions,reach,clicks,spend,actions,cost_per_action_type",
-          "date_preset": "this_month",
-          "level": "campaign",
-          "limit": "200",
-          "access_token": "={{$env.META_ACCESS_TOKEN}}"
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "fields", "value": "campaign_name,campaign_id,impressions,reach,clicks,spend,actions,cost_per_action_type" },
+            { "name": "date_preset", "value": "this_month" },
+            { "name": "level", "value": "campaign" },
+            { "name": "limit", "value": "200" },
+            { "name": "access_token", "value": "={{$env.META_ACCESS_TOKEN}}" }
+          ]
         },
         "options": {}
       },

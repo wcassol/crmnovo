@@ -44,7 +44,13 @@
     {
       "parameters": {
         "url": "=https://graph.facebook.com/v21.0/{{$json.leadgen_id}}",
-        "qs": { "access_token": "={{$env.META_ACCESS_TOKEN}}" }
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "access_token", "value": "={{$env.META_ACCESS_TOKEN}}" }
+          ]
+        },
+        "options": {}
       },
       "id": "fetchLead",
       "name": "Meta GET /leadgen_id",
