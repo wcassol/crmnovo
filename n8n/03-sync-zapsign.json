@@ -21,10 +21,25 @@
     },
     {
       "parameters": {
-        "url": "=https://api.zapsign.com.br/api/v1/docs/?page=1&page_size=100",
+        "url": "=https://api.zapsign.com.br/api/v1/docs/",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "page", "value": "1" },
+            { "name": "page_size", "value": "100" }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{$response.body.next}}",
+              "limitPagesFetched": false
+            }
+          }
+        }
       },
       "id": "fetchDocs",
       "name": "ZapSign GET /docs",
@@ -92,13 +107,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const docId = it.json.zapsign_doc_id;\n  for (const s of (it.json.signers || [])) {\n    let st = 'Nao abriu';\n    if (s.status === 'signed') st = 'Assinou';\n    else if (s.status === 'visualized') st = 'Apenas visualizou';\n    out.push({ json: {\n      zapsign_doc_id: docId,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: st,\n      data_assinatura: s.signed_at || null\n    } });\n  }\n}\nreturn out;"
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const docId = it.json.zapsign_doc_id;\n  for (const s of (it.json.signers || [])) {\n    if (!s || !s.token) continue;\n    let st = 'Nao abriu';\n    if (s.status === 'signed') st = 'Assinou';\n    else if (s.status === 'visualized') st = 'Apenas visualizou';\n    out.push({ json: {\n      zapsign_doc_id: docId,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: st,\n      data_assinatura: s.signed_at || null\n    } });\n  }\n}\nreturn out;"
       },
       "id": "expandSigners",
       "name": "Expandir signatarios",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1620, 300]
+      "position": [1620, 200],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -112,18 +128,20 @@
       "name": "Upsert signatarios",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1800, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "position": [1800, 200],
+      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } },
+      "alwaysOutputData": true,
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { fonte: 'zapsign', count: $input.all().length } }];"
+        "jsCode": "const docs = $('Recompor signers').all();\nreturn [{ json: { fonte: 'zapsign', count: docs.length } }];"
       },
       "id": "contarRegistros",
       "name": "Contar registros",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, 300]
+      "position": [1620, 400]
     },
     {
       "parameters": {
@@ -134,7 +152,7 @@
       "name": "Log sucesso",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [2160, 300],
+      "position": [1800, 400],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
     }
   ],
@@ -146,9 +164,13 @@
     "Classificar contrato": { "main": [[{ "node": "Remover signers", "type": "main", "index": 0 }]] },
     "Remover signers": { "main": [[{ "node": "Upsert contratos", "type": "main", "index": 0 }]] },
     "Upsert contratos": { "main": [[{ "node": "Recompor signers", "type": "main", "index": 0 }]] },
-    "Recompor signers": { "main": [[{ "node": "Expandir signatarios", "type": "main", "index": 0 }]] },
+    "Recompor signers": {
+      "main": [[
+        { "node": "Expandir signatarios", "type": "main", "index": 0 },
+        { "node": "Contar registros", "type": "main", "index": 0 }
+      ]]
+    },
     "Expandir signatarios": { "main": [[{ "node": "Upsert signatarios", "type": "main", "index": 0 }]] },
-    "Upsert signatarios": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
     "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
