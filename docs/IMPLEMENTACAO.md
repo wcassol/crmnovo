@@ -376,6 +376,29 @@ Variaveis dos tokens externos (`WTS_API_TOKEN`, `META_ACCESS_TOKEN`
 etc.) nao precisam estar no frontend, pois o frontend nunca chama
 essas APIs diretamente; quem fala com elas e o n8n.
 
+### 8.3.1 IMPORTANTE: Build Args do Docker
+
+As variaveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+sao embutidas no bundle JavaScript que roda no navegador, em build time.
+Variaveis configuradas apenas em `Environment` so existem no runtime do
+servidor; o cliente browser nao enxerga, e o login fica preso em
+`Entrando...` indefinidamente.
+
+No Easypanel, va em `Build > Build Args` (ou `Advanced > Build Args`,
+depende da versao) e adicione exatamente os mesmos valores:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://supabase.zapconnecta.com
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...
+```
+
+Se o servico ja foi criado sem isso, edite os Build Args, salve e
+clique em `Rebuild` (nao apenas `Redeploy`, que reaproveita a imagem).
+Para confirmar, abra o navegador, F12 > Network, tente logar e veja
+se o request sai para `https://supabase.zapconnecta.com/auth/v1/token`.
+Se sair para `undefined/auth/v1/...` ou para a propria URL do dashboard,
+os Build Args nao foram aplicados.
+
 ### 8.4 Build e deploy
 
 1. Clique em `Save` e depois `Deploy`.
@@ -501,6 +524,34 @@ Cheque se o usuario realmente foi criado em `Authentication > Users`
 e se voce marcou `Auto confirm user` (sem isso, o login fica bloqueado
 ate o email de confirmacao ser clicado, o que nao vai chegar se SMTP
 nao estiver configurado no Supabase).
+
+### Login fica preso em `Entrando...` e nao acontece nada
+
+Sintoma: o botao vira `Entrando...` e nunca volta, sem mensagem de erro.
+
+Causa quase certa: as variaveis `NEXT_PUBLIC_SUPABASE_URL` e
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` nao foram passadas como Build Args do
+Docker, entao foram embutidas como `undefined` no bundle do navegador.
+
+Como confirmar:
+
+1. Abra o site, F12 > `Console`. Voce deve ver um `Error: Configuracao
+   do Supabase ausente no bundle do cliente`.
+2. Ou em `Network`, ao clicar `Entrar`, o request vai para uma URL
+   estranha (`undefined/auth/v1/token` ou para a propria URL do
+   dashboard) em vez de `https://supabase.zapconnecta.com/...`.
+
+Como corrigir:
+
+1. No Easypanel, abra o servico `wcassol-funil-dashboard`.
+2. Va em `Build > Build Args` (algumas versoes chamam de `Build
+   Variables` ou ficam em `Advanced`).
+3. Adicione, com os mesmos valores que estao em `Environment`:
+   - `NEXT_PUBLIC_SUPABASE_URL=https://supabase.zapconnecta.com`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...`
+4. Salve e clique em `Rebuild` (nao `Redeploy`, que reaproveita a
+   imagem antiga).
+5. Aguarde o build terminar e teste o login outra vez.
 
 ### `RealtimeRefresher` nao atualiza nada
 

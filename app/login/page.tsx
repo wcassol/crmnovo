@@ -20,15 +20,20 @@ function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      router.push(next);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro inesperado ao entrar.');
+    } finally {
+      setLoading(false);
     }
-    router.push(next);
-    router.refresh();
   }
 
   return (
