@@ -50,11 +50,21 @@
     },
     {
       "parameters": {
-        "url": "=https://api.wts.chat/sessions?status=all&created_after={{$json.since}}&limit=200",
+        "url": "https://api.wts.chat/chat/v1/sessions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "Authorization", "value": "Bearer pn_WlkjJWQ0vPSG7Pnz3uH8gv1i3B1QBJ82b5ht9oTunUI" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "PageSize", "value": "100" },
+            { "name": "OrderBy", "value": "CreatedAt" },
+            { "name": "OrderDirection", "value": "DESCENDING" },
+            { "name": "IncludeDetails", "value": "Contact" },
+            { "name": "CreatedAtAfter", "value": "={{$json.since}}" }
           ]
         },
         "options": {}
@@ -67,7 +77,7 @@
     },
     {
       "parameters": {
-        "fieldToSplitOut": "data",
+        "fieldToSplitOut": "items",
         "options": {}
       },
       "id": "splitSessoes",
@@ -83,18 +93,18 @@
         "fieldsToInclude": {
           "values": [
             { "name": "wts_session_id", "value": "={{$json.id}}" },
-            { "name": "nome", "value": "={{$json.contact?.name || ''}}" },
-            { "name": "telefone", "value": "={{$json.contact?.phoneNumber || ''}}" },
-            { "name": "status", "value": "={{$json.status || 'Pendente'}}" },
-            { "name": "utm_source", "value": "={{$json.utmSource || ''}}" },
-            { "name": "utm_medium", "value": "={{$json.utmMedium || ''}}" },
-            { "name": "utm_campaign", "value": "={{$json.utmCampaign || ''}}" },
-            { "name": "utm_content", "value": "={{$json.utmContent || ''}}" },
-            { "name": "primeira_mensagem", "value": "={{$json.firstMessage || ''}}" },
+            { "name": "nome", "value": "={{$json.contactDetails?.name || ''}}" },
+            { "name": "telefone", "value": "={{$json.contactDetails?.phone || $json.contactDetails?.number || $json.number || ''}}" },
+            { "name": "status", "value": "={{ ({UNREPLIED:'Pendente',SCHEDULED:'Pendente',FROZEN:'Pendente',IN_PROGRESS:'Em andamento',COMPLETED:'Concluido',CLOSED:'Concluido'})[$json.status] || 'Pendente' }}" },
+            { "name": "utm_source", "value": "={{$json.utm?.source || ''}}" },
+            { "name": "utm_medium", "value": "={{$json.utm?.medium || ''}}" },
+            { "name": "utm_campaign", "value": "={{$json.utm?.campaign || ''}}" },
+            { "name": "utm_content", "value": "={{$json.utm?.content || ''}}" },
+            { "name": "primeira_mensagem", "value": "={{$json.lastMessageText || ''}}" },
             { "name": "data_criacao", "value": "={{$json.createdAt}}" },
-            { "name": "data_primeira_mensagem", "value": "={{$json.firstMessageAt || $json.createdAt}}" },
-            { "name": "data_ultima_mensagem", "value": "={{$json.lastMessageAt || $json.createdAt}}" },
-            { "name": "tempo_atendimento_min", "value": "={{$json.responseTime ? Number($json.responseTime)/60 : null}}" }
+            { "name": "data_primeira_mensagem", "value": "={{$json.startAt || $json.createdAt}}" },
+            { "name": "data_ultima_mensagem", "value": "={{$json.lastInteractionDate || $json.updatedAt || $json.createdAt}}" },
+            { "name": "tempo_atendimento_min", "value": "={{$json.timeService ? Number($json.timeService)/60 : null}}" }
           ]
         },
         "options": {}
