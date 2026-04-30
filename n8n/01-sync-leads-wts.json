@@ -50,7 +50,7 @@
     },
     {
       "parameters": {
-        "url": "https://api.wts.chat/chat/v1/sessions",
+        "url": "https://api.wts.chat/chat/v2/session",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -63,7 +63,8 @@
             { "name": "PageSize", "value": "100" },
             { "name": "OrderBy", "value": "CreatedAt" },
             { "name": "OrderDirection", "value": "DESCENDING" },
-            { "name": "CreatedAtAfter", "value": "={{$json.since}}" }
+            { "name": "IncludeDetails", "value": "ContactDetails" },
+            { "name": "CreatedAt.After", "value": "={{$json.since}}" }
           ]
         },
         "options": {}
@@ -92,9 +93,9 @@
         "fieldsToInclude": {
           "values": [
             { "name": "wts_session_id", "value": "={{$json.id}}" },
-            { "name": "nome", "value": "={{$json.contactDetails?.name || ''}}" },
-            { "name": "telefone", "value": "={{$json.contactDetails?.phone || $json.contactDetails?.number || $json.number || ''}}" },
-            { "name": "status", "value": "={{ ({UNREPLIED:'Pendente',SCHEDULED:'Pendente',FROZEN:'Pendente',IN_PROGRESS:'Em andamento',COMPLETED:'Concluido',CLOSED:'Concluido'})[$json.status] || 'Pendente' }}" },
+            { "name": "nome", "value": "={{$json.contactDetails?.name || $json.title || ''}}" },
+            { "name": "telefone", "value": "={{$json.contactDetails?.phonenumberFormatted || $json.contactDetails?.phonenumber || $json.number || ''}}" },
+            { "name": "status", "value": "={{ ({UNDEFINED:'Pendente',STARTED:'Pendente',PENDING:'Pendente',IN_PROGRESS:'Em andamento',COMPLETED:'Concluido',HIDDEN:'Pendente'})[$json.status] || 'Pendente' }}" },
             { "name": "utm_source", "value": "={{$json.utm?.source || ''}}" },
             { "name": "utm_medium", "value": "={{$json.utm?.medium || ''}}" },
             { "name": "utm_campaign", "value": "={{$json.utm?.campaign || ''}}" },
@@ -102,7 +103,7 @@
             { "name": "primeira_mensagem", "value": "={{$json.lastMessageText || ''}}" },
             { "name": "data_criacao", "value": "={{$json.createdAt}}" },
             { "name": "data_primeira_mensagem", "value": "={{$json.startAt || $json.createdAt}}" },
-            { "name": "data_ultima_mensagem", "value": "={{$json.lastInteractionDate || $json.updatedAt || $json.createdAt}}" },
+            { "name": "data_ultima_mensagem", "value": "={{$json.lastInteractionDate || $json.lastMessageIn || $json.lastMessageOut || $json.updatedAt || $json.createdAt}}" },
             { "name": "tempo_atendimento_min", "value": "={{$json.timeService ? Number($json.timeService)/60 : null}}" }
           ]
         },
