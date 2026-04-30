@@ -83,9 +83,9 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO signatarios (contrato_id, zapsign_signer_token, nome, email, telefone, status, data_assinatura) SELECT c.id, $2, $3, $4, $5, $6, $7 FROM contratos c WHERE c.zapsign_doc_id = $1 ON CONFLICT (zapsign_signer_token) DO UPDATE SET status = EXCLUDED.status, data_assinatura = EXCLUDED.data_assinatura;",
-        "additionalFields": {
-          "queryParams": "={{$json.zapsign_doc_id}},{{$json.zapsign_signer_token}},{{$json.nome}},{{$json.email}},{{$json.telefone}},{{$json.status}},{{$json.data_assinatura}}"
+        "query": "INSERT INTO signatarios (contrato_id, zapsign_signer_token, nome, email, telefone, status, data_assinatura) SELECT c.id, $2, $3, $4, $5, $6, NULLIF($7, '')::timestamptz FROM contratos c WHERE c.zapsign_doc_id = $1 ON CONFLICT (zapsign_signer_token) DO UPDATE SET status = EXCLUDED.status, data_assinatura = EXCLUDED.data_assinatura;",
+        "options": {
+          "queryReplacement": "={{$json.zapsign_doc_id}},{{$json.zapsign_signer_token}},{{$json.nome}},{{$json.email}},{{$json.telefone}},{{$json.status}},{{$json.data_assinatura || ''}}"
         }
       },
       "id": "upsertSigners",
@@ -108,10 +108,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ($1, 'sucesso', $2, NOW())",
-        "additionalFields": {
-          "queryParams": "={{$json.fonte}},{{$json.count}}"
-        }
+        "query": "=INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ('zapsign', 'sucesso', {{$json.count}}, NOW())"
       },
       "id": "logSync",
       "name": "Log sucesso",

@@ -88,10 +88,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ($1, 'sucesso', $2, NOW())",
-        "additionalFields": {
-          "queryParams": "={{$json.fonte}},{{$json.count}}"
-        }
+        "query": "=INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ('meta', 'sucesso', {{$json.count}}, NOW())"
       },
       "id": "logSync",
       "name": "Log sucesso",
