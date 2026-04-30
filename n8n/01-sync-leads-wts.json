@@ -29,7 +29,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT finalizado_em FROM sync_log WHERE fonte = 'wts' AND status = 'sucesso' ORDER BY finalizado_em DESC LIMIT 1"
+        "query": "SELECT MAX(finalizado_em) AS finalizado_em FROM sync_log WHERE fonte = 'wts' AND status = 'sucesso'"
       },
       "id": "ultimaSync",
       "name": "Ultima sync WTS",
