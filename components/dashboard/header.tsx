@@ -43,13 +43,14 @@ export function DashboardHeader({ email, from, to, tipo }: Props) {
       if (resp.ok) {
         setSyncMsg('Sincronizacao disparada.');
       } else {
-        setSyncMsg(json.error ?? 'Falha ao disparar.');
+        const detalhe = json.error ?? `HTTP ${resp.status}`;
+        setSyncMsg(`Falha: ${detalhe}`);
       }
     } catch (err) {
       setSyncMsg(err instanceof Error ? err.message : 'Erro de rede');
     } finally {
       setSyncing(false);
-      setTimeout(() => setSyncMsg(null), 4000);
+      setTimeout(() => setSyncMsg(null), 8000);
     }
   }
 
