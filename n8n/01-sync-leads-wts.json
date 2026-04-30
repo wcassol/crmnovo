@@ -51,18 +51,19 @@
     {
       "parameters": {
         "url": "=https://api.wts.chat/sessions?status=all&created_after={{$json.since}}&limit=200",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer pn_WlkjJWQ0vPSG7Pnz3uH8gv1i3B1QBJ82b5ht9oTunUI" }
+          ]
+        },
         "options": {}
       },
       "id": "fetchSessoes",
       "name": "WTS GET /sessions",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 300],
-      "credentials": {
-        "httpHeaderAuth": { "id": "{{WTS_AUTH_CRED_ID}}", "name": "WTS Bearer" }
-      }
+      "position": [900, 300]
     },
     {
       "parameters": {
