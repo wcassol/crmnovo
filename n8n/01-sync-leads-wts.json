@@ -63,7 +63,6 @@
             { "name": "PageSize", "value": "100" },
             { "name": "OrderBy", "value": "CreatedAt" },
             { "name": "OrderDirection", "value": "DESCENDING" },
-            { "name": "IncludeDetails", "value": "Contact" },
             { "name": "CreatedAtAfter", "value": "={{$json.since}}" }
           ]
         },
