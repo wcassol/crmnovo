@@ -25,7 +25,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "fields", "value": "campaign_name,campaign_id,impressions,reach,clicks,spend,actions,cost_per_action_type" },
+            { "name": "fields", "value": "campaign_name,campaign_id,impressions,reach,clicks,spend,actions,cost_per_action_type,date_start,date_stop" },
             { "name": "date_preset", "value": "this_month" },
             { "name": "level", "value": "campaign" },
             { "name": "limit", "value": "200" },
@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const c = it.json;\n  const nome = c.campaign_name || '';\n  let tipo = 'NAO_CLASSIFICADO';\n  const u = nome.toUpperCase();\n  if (u.includes('UBER') || u.includes('99') || u.includes('INDRIVE') || u.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (u.includes('NAV') || u.includes('SERV') || u.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  const conversas = (c.actions || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d')?.value;\n  const cprObj = (c.cost_per_action_type || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d');\n  const impressoes = Number(c.impressions || 0);\n  const cliques = Number(c.clicks || 0);\n  items.push({ json: {\n    campaign_id: c.campaign_id,\n    nome,\n    tipo,\n    status: 'ACTIVE',\n    impressoes,\n    alcance: Number(c.reach || 0),\n    cliques,\n    resultados: Number(conversas || 0),\n    gasto: Number(c.spend || 0),\n    cpr: Number(cprObj?.value || 0),\n    cpm: impressoes > 0 ? (Number(c.spend || 0) / impressoes) * 1000 : 0,\n    ctr: impressoes > 0 ? cliques / impressoes : 0,\n    raw_actions: JSON.stringify(c.actions || [])\n  } });\n}\nreturn items;"
+        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const c = it.json;\n  const nome = c.campaign_name || '';\n  let tipo = 'NAO_CLASSIFICADO';\n  const u = nome.toUpperCase();\n  if (u.includes('UBER') || u.includes('99') || u.includes('INDRIVE') || u.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (u.includes('NAV') || u.includes('SERV') || u.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  const conversas = (c.actions || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d')?.value;\n  const cprObj = (c.cost_per_action_type || []).find(a => a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || a.action_type === 'messaging_conversation_started_7d');\n  const impressoes = Number(c.impressions || 0);\n  const cliques = Number(c.clicks || 0);\n  items.push({ json: {\n    campaign_id: c.campaign_id,\n    nome,\n    tipo,\n    status: 'ACTIVE',\n    impressoes,\n    alcance: Number(c.reach || 0),\n    cliques,\n    resultados: Number(conversas || 0),\n    gasto: Number(c.spend || 0),\n    cpr: Number(cprObj?.value || 0),\n    cpm: impressoes > 0 ? (Number(c.spend || 0) / impressoes) * 1000 : 0,\n    ctr: impressoes > 0 ? cliques / impressoes : 0,\n    data_inicio: c.date_start || null,\n    data_fim: c.date_stop || null,\n    raw_actions: JSON.stringify(c.actions || [])\n  } });\n}\nreturn items;"
       },
       "id": "mapMeta",
       "name": "Classificar tipo",
