@@ -54,6 +54,16 @@
     },
     {
       "parameters": {
+        "jsCode": "return $input.all().map(it => {\n  const { signers, ...rest } = it.json;\n  return { json: rest };\n});"
+      },
+      "id": "dropSigners",
+      "name": "Remover signers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1080, 300]
+    },
+    {
+      "parameters": {
         "operation": "upsert",
         "schema": { "__rl": true, "value": "public", "mode": "list" },
         "table": { "__rl": true, "value": "contratos", "mode": "list" },
@@ -67,8 +77,18 @@
       "name": "Upsert contratos",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1120, 300],
+      "position": [1260, 300],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Classificar contrato').all();\nreturn $input.all().map(it => {\n  const orig = original.find(o => o.json.zapsign_doc_id === it.json.zapsign_doc_id);\n  return { json: { ...it.json, signers: orig?.json?.signers || [] } };\n});"
+      },
+      "id": "recomposeSigners",
+      "name": "Recompor signers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 300]
     },
     {
       "parameters": {
@@ -78,7 +98,7 @@
       "name": "Expandir signatarios",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1340, 300]
+      "position": [1620, 300]
     },
     {
       "parameters": {
@@ -92,7 +112,7 @@
       "name": "Upsert signatarios",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [1560, 300],
+      "position": [1800, 300],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
     },
     {
@@ -103,7 +123,7 @@
       "name": "Contar registros",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1780, 300]
+      "position": [1980, 300]
     },
     {
       "parameters": {
@@ -114,7 +134,7 @@
       "name": "Log sucesso",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
-      "position": [2000, 300],
+      "position": [2160, 300],
       "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
     }
   ],
@@ -123,8 +143,10 @@
     "Quando chamado por outro fluxo": { "main": [[{ "node": "ZapSign GET /docs", "type": "main", "index": 0 }]] },
     "ZapSign GET /docs": { "main": [[{ "node": "Split docs", "type": "main", "index": 0 }]] },
     "Split docs": { "main": [[{ "node": "Classificar contrato", "type": "main", "index": 0 }]] },
-    "Classificar contrato": { "main": [[{ "node": "Upsert contratos", "type": "main", "index": 0 }]] },
-    "Upsert contratos": { "main": [[{ "node": "Expandir signatarios", "type": "main", "index": 0 }]] },
+    "Classificar contrato": { "main": [[{ "node": "Remover signers", "type": "main", "index": 0 }]] },
+    "Remover signers": { "main": [[{ "node": "Upsert contratos", "type": "main", "index": 0 }]] },
+    "Upsert contratos": { "main": [[{ "node": "Recompor signers", "type": "main", "index": 0 }]] },
+    "Recompor signers": { "main": [[{ "node": "Expandir signatarios", "type": "main", "index": 0 }]] },
     "Expandir signatarios": { "main": [[{ "node": "Upsert signatarios", "type": "main", "index": 0 }]] },
     "Upsert signatarios": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
     "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
