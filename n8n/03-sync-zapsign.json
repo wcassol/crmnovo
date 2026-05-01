@@ -28,18 +28,11 @@
         "queryParameters": {
           "parameters": [
             { "name": "page", "value": "1" },
-            { "name": "page_size", "value": "100" }
+            { "name": "page_size", "value": "100" },
+            { "name": "sort_order", "value": "-created_at" }
           ]
         },
-        "options": {
-          "pagination": {
-            "pagination": {
-              "paginationMode": "responseContainsNextURL",
-              "nextURL": "={{$response.body.next}}",
-              "maxRequests": 10
-            }
-          }
-        }
+        "options": {}
       },
       "id": "fetchDocs",
       "name": "ZapSign GET /docs",
