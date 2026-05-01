@@ -28,8 +28,8 @@
         "queryParameters": {
           "parameters": [
             { "name": "page", "value": "1" },
-            { "name": "page_size", "value": "100" },
-            { "name": "ordering", "value": "-created_at" }
+            { "name": "sort_order", "value": "desc" },
+            { "name": "include_signers", "value": "true" }
           ]
         },
         "options": {}
@@ -100,7 +100,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const docId = it.json.zapsign_doc_id;\n  for (const s of (it.json.signers || [])) {\n    if (!s || !s.token) continue;\n    let st = 'Nao abriu';\n    if (s.status === 'signed') st = 'Assinou';\n    else if (s.status === 'visualized') st = 'Apenas visualizou';\n    out.push({ json: {\n      zapsign_doc_id: docId,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: st,\n      data_assinatura: s.signed_at || null\n    } });\n  }\n}\nreturn out;"
+        "jsCode": "const statusMap = {\n  nao_abriu: 'Nao abriu',\n  abriu: 'Apenas visualizou',\n  assinou: 'Assinou',\n  recusou: 'Recusou',\n  expirou: 'Expirou',\n  cancelado: 'Cancelado',\n  // legados em ingles, por seguranca:\n  signed: 'Assinou',\n  visualized: 'Apenas visualizou',\n  refused: 'Recusou',\n  rejected: 'Recusou',\n  expired: 'Expirou'\n};\nconst out = [];\nfor (const it of $input.all()) {\n  const docId = it.json.zapsign_doc_id;\n  for (const s of (it.json.signers || [])) {\n    if (!s || !s.token) continue;\n    out.push({ json: {\n      zapsign_doc_id: docId,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: statusMap[s.status] || 'Nao abriu',\n      data_assinatura: s.signed_at || null\n    } });\n  }\n}\nreturn out;"
       },
       "id": "expandSigners",
       "name": "Expandir signatarios",
