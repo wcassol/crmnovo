@@ -49,13 +49,14 @@
     },
     {
       "parameters": {
-        "jsCode": "const arr = $input.first()?.json;\nconst last = Array.isArray(arr) && arr[0] ? arr[0].finalizado_em : null;\nconst since = last ? new Date(last).toISOString() : new Date(Date.now() - 24*60*60*1000).toISOString();\nreturn [{ json: { since } }];"
+        "jsCode": "let last = null;\ntry {\n  const arr = $input.first()?.json;\n  if (Array.isArray(arr) && arr[0]?.finalizado_em) last = arr[0].finalizado_em;\n  else if (arr && typeof arr === 'object' && arr.finalizado_em) last = arr.finalizado_em;\n} catch (e) { last = null; }\nconst since = last ? new Date(last).toISOString() : new Date(Date.now() - 24*60*60*1000).toISOString();\nreturn [{ json: { since } }];"
       },
       "id": "calcSince",
       "name": "Calcula since",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [680, 300],
+      "alwaysOutputData": true
     },
     {
       "parameters": {
@@ -155,7 +156,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ p_fonte: 'wts', p_count: $json.count }) }}",
+        "jsonBody": "={{ JSON.stringify({ p_fonte: 'wts', p_count: $('Agrupar leads').first().json.count }) }}",
         "options": {}
       },
       "id": "logSync",

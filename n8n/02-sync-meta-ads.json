@@ -112,7 +112,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ p_fonte: 'meta', p_count: $json.count }) }}",
+        "jsonBody": "={{ JSON.stringify({ p_fonte: 'meta', p_count: $('Agrupar campanhas').first().json.count }) }}",
         "options": {}
       },
       "id": "logSync",
