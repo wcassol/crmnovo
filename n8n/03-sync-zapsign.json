@@ -44,7 +44,8 @@
         "httpHeaderAuth": { "id": "{{ZAPSIGN_AUTH_CRED_ID}}", "name": "ZapSign Bearer" }
       }
     },
-    { "parameters": { "fieldToSplitOut": "results", "options": {} },
+    {
+      "parameters": { "fieldToSplitOut": "results", "options": {} },
       "id": "splitDocs",
       "name": "Split docs",
       "type": "n8n-nodes-base.splitOut",
@@ -53,7 +54,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const d = it.json;\n  const nome = d.name || '';\n  const u = nome.toUpperCase();\n  let tipo = 'GENERICO';\n  if (u.includes('UBER') || u.includes('99') || u.includes('INDRIVE') || u.includes('APP MOBILIDADE') || u.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  let status = 'Em curso';\n  if (d.status === 'signed') status = 'Assinado';\n  else if (d.status === 'refused' || d.status === 'rejected') status = 'Recusado';\n  else if (d.status === 'expired') status = 'Expirado';\n  items.push({ json: {\n    zapsign_doc_id: d.token || d.open_id,\n    nome_documento: nome,\n    tipo_contrato: tipo,\n    status,\n    data_criacao: d.created_at,\n    data_assinatura: d.last_update_at && status === 'Assinado' ? d.last_update_at : null,\n    signers: d.signers || []\n  } });\n}\nreturn items;"
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const d = it.json;\n  const nome = d.name || '';\n  const u = nome.toUpperCase();\n  let tipo = 'GENERICO';\n  if (u.includes('UBER') || u.includes('99') || u.includes('INDRIVE') || u.includes('APP MOBILIDADE') || u.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  let status = 'Em curso';\n  if (d.status === 'signed') status = 'Assinado';\n  else if (d.status === 'refused' || d.status === 'rejected') status = 'Recusado';\n  else if (d.status === 'expired') status = 'Expirado';\n  out.push({ json: {\n    zapsign_doc_id: d.token || d.open_id,\n    nome_documento: nome,\n    tipo_contrato: tipo,\n    status,\n    data_criacao: d.created_at,\n    data_assinatura: d.last_update_at && status === 'Assinado' ? d.last_update_at : null,\n    signers: d.signers || []\n  } });\n}\nreturn out;"
       },
       "id": "mapDocs",
       "name": "Classificar contrato",
@@ -63,89 +64,90 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(it => {\n  const { signers, ...rest } = it.json;\n  return { json: rest };\n});"
+        "jsCode": "const statusMap = {\n  nao_abriu: 'Nao abriu', abriu: 'Apenas visualizou', assinou: 'Assinou', recusou: 'Recusou', expirou: 'Expirou', cancelado: 'Cancelado',\n  signed: 'Assinou', visualized: 'Apenas visualizou', refused: 'Recusou', rejected: 'Recusou', expired: 'Expirou'\n};\nconst contratos = [];\nconst signers = [];\nfor (const it of $input.all()) {\n  const d = it.json;\n  const { signers: docSigners, ...rest } = d;\n  contratos.push(rest);\n  for (const s of (docSigners || [])) {\n    if (!s || !s.token) continue;\n    signers.push({\n      zapsign_doc_id: rest.zapsign_doc_id,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: statusMap[s.status] || 'Nao abriu',\n      data_assinatura: s.signed_at || null\n    });\n  }\n}\nreturn [{ json: { contratos, signers, count: contratos.length } }];"
       },
-      "id": "dropSigners",
-      "name": "Remover signers",
+      "id": "agrupar",
+      "name": "Agrupar contratos e signers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1080, 300]
+      "position": [1120, 300]
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "schema": { "__rl": true, "value": "public", "mode": "list" },
-        "table": { "__rl": true, "value": "contratos", "mode": "list" },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "matchingColumns": ["zapsign_doc_id"]
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/contratos",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
         },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "on_conflict", "value": "zapsign_doc_id" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.contratos) }}",
         "options": {}
       },
       "id": "upsertContratos",
       "name": "Upsert contratos",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1260, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
     },
     {
       "parameters": {
-        "jsCode": "const original = $('Classificar contrato').all();\nreturn $input.all().map(it => {\n  const orig = original.find(o => o.json.zapsign_doc_id === it.json.zapsign_doc_id);\n  return { json: { ...it.json, signers: orig?.json?.signers || [] } };\n});"
-      },
-      "id": "recomposeSigners",
-      "name": "Recompor signers",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1440, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "const statusMap = {\n  nao_abriu: 'Nao abriu',\n  abriu: 'Apenas visualizou',\n  assinou: 'Assinou',\n  recusou: 'Recusou',\n  expirou: 'Expirou',\n  cancelado: 'Cancelado',\n  // legados em ingles, por seguranca:\n  signed: 'Assinou',\n  visualized: 'Apenas visualizou',\n  refused: 'Recusou',\n  rejected: 'Recusou',\n  expired: 'Expirou'\n};\nconst out = [];\nfor (const it of $input.all()) {\n  const docId = it.json.zapsign_doc_id;\n  for (const s of (it.json.signers || [])) {\n    if (!s || !s.token) continue;\n    out.push({ json: {\n      zapsign_doc_id: docId,\n      zapsign_signer_token: s.token,\n      nome: s.name || '',\n      email: s.email || '',\n      telefone: s.phone_number || '',\n      status: statusMap[s.status] || 'Nao abriu',\n      data_assinatura: s.signed_at || null\n    } });\n  }\n}\nreturn out;"
-      },
-      "id": "expandSigners",
-      "name": "Expandir signatarios",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1620, 200]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "INSERT INTO signatarios (contrato_id, zapsign_signer_token, nome, email, telefone, status, data_assinatura) SELECT c.id, $2, $3, $4, $5, $6, NULLIF($7, '')::timestamptz FROM contratos c WHERE c.zapsign_doc_id = $1 ON CONFLICT (zapsign_signer_token) DO UPDATE SET status = EXCLUDED.status, data_assinatura = EXCLUDED.data_assinatura;",
-        "options": {
-          "queryReplacement": "={{$json.zapsign_doc_id}},{{$json.zapsign_signer_token}},{{$json.nome}},{{$json.email}},{{$json.telefone}},{{$json.status}},{{$json.data_assinatura || ''}}"
-        }
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/rpc/upsert_signatarios_batch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ payload: $('Agrupar contratos e signers').first().json.signers }) }}",
+        "options": {}
       },
       "id": "upsertSigners",
       "name": "Upsert signatarios",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1800, 200],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "const docs = $('Recompor signers').all();\nreturn [{ json: { fonte: 'zapsign', count: docs.length } }];"
-      },
-      "id": "contarRegistros",
-      "name": "Contar registros",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1620, 400]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ('zapsign', 'sucesso', {{$json.count}}, NOW())"
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/rpc/log_sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_fonte: 'zapsign', p_count: $('Agrupar contratos e signers').first().json.count }) }}",
+        "options": {}
       },
       "id": "logSync",
       "name": "Log sucesso",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1800, 400],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
     }
   ],
   "connections": {
@@ -153,17 +155,10 @@
     "Quando chamado por outro fluxo": { "main": [[{ "node": "ZapSign GET /docs", "type": "main", "index": 0 }]] },
     "ZapSign GET /docs": { "main": [[{ "node": "Split docs", "type": "main", "index": 0 }]] },
     "Split docs": { "main": [[{ "node": "Classificar contrato", "type": "main", "index": 0 }]] },
-    "Classificar contrato": { "main": [[{ "node": "Remover signers", "type": "main", "index": 0 }]] },
-    "Remover signers": { "main": [[{ "node": "Upsert contratos", "type": "main", "index": 0 }]] },
-    "Upsert contratos": { "main": [[{ "node": "Recompor signers", "type": "main", "index": 0 }]] },
-    "Recompor signers": {
-      "main": [[
-        { "node": "Expandir signatarios", "type": "main", "index": 0 },
-        { "node": "Contar registros", "type": "main", "index": 0 }
-      ]]
-    },
-    "Expandir signatarios": { "main": [[{ "node": "Upsert signatarios", "type": "main", "index": 0 }]] },
-    "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+    "Classificar contrato": { "main": [[{ "node": "Agrupar contratos e signers", "type": "main", "index": 0 }]] },
+    "Agrupar contratos e signers": { "main": [[{ "node": "Upsert contratos", "type": "main", "index": 0 }]] },
+    "Upsert contratos": { "main": [[{ "node": "Upsert signatarios", "type": "main", "index": 0 }]] },
+    "Upsert signatarios": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "zapsign"]

@@ -3,14 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "cronExpression",
-              "expression": "*/15 * * * *"
-            }
-          ]
-        }
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "*/15 * * * *" }] }
       },
       "id": "schedule",
       "name": "Cada 15 minutos",
@@ -28,19 +21,35 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT MAX(finalizado_em) AS finalizado_em FROM sync_log WHERE fonte = 'wts' AND status = 'sucesso'"
+        "url": "=https://supabase.zapconnecta.com/rest/v1/sync_log",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "finalizado_em" },
+            { "name": "fonte", "value": "eq.wts" },
+            { "name": "status", "value": "eq.sucesso" },
+            { "name": "order", "value": "finalizado_em.desc" },
+            { "name": "limit", "value": "1" }
+          ]
+        },
+        "options": {}
       },
       "id": "ultimaSync",
       "name": "Ultima sync WTS",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [460, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
     },
     {
       "parameters": {
-        "jsCode": "const last = $input.first()?.json?.finalizado_em;\nconst since = last ? new Date(last).toISOString() : new Date(Date.now() - 24*60*60*1000).toISOString();\nreturn [{ json: { since } }];"
+        "jsCode": "const arr = $input.first()?.json;\nconst last = Array.isArray(arr) && arr[0] ? arr[0].finalizado_em : null;\nconst since = last ? new Date(last).toISOString() : new Date(Date.now() - 24*60*60*1000).toISOString();\nreturn [{ json: { since } }];"
       },
       "id": "calcSince",
       "name": "Calcula since",
@@ -63,7 +72,6 @@
             { "name": "PageSize", "value": "100" },
             { "name": "OrderBy", "value": "CreatedAt" },
             { "name": "OrderDirection", "value": "DESCENDING" },
-            { "name": "IncludeDetails", "value": "ContactDetails" },
             { "name": "CreatedAt.After", "value": "={{$json.since}}" }
           ]
         },
@@ -76,10 +84,7 @@
       "position": [900, 300]
     },
     {
-      "parameters": {
-        "fieldToSplitOut": "items",
-        "options": {}
-      },
+      "parameters": { "fieldToSplitOut": "items", "options": {} },
       "id": "splitSessoes",
       "name": "Split sessoes",
       "type": "n8n-nodes-base.splitOut",
@@ -98,43 +103,66 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "schema": { "__rl": true, "value": "public", "mode": "list" },
-        "table": { "__rl": true, "value": "leads", "mode": "list" },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "matchingColumns": ["wts_session_id"]
+        "jsCode": "const arr = $input.all().map(it => it.json);\nreturn [{ json: { rows: arr, count: arr.length } }];"
+      },
+      "id": "agruparLeads",
+      "name": "Agrupar leads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
         },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "on_conflict", "value": "wts_session_id" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
         "options": {}
       },
       "id": "upsertLeads",
       "name": "Upsert leads",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1560, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{ json: { fonte: 'wts', count: $input.all().length } }];"
-      },
-      "id": "contarRegistros",
-      "name": "Contar registros",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1780, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ('wts', 'sucesso', {{$json.count}}, NOW())"
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/rpc/log_sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_fonte: 'wts', p_count: $json.count }) }}",
+        "options": {}
       },
       "id": "logSync",
       "name": "Log sucesso",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [2000, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300]
     }
   ],
   "connections": {
@@ -144,9 +172,9 @@
     "Calcula since": { "main": [[{ "node": "WTS GET /sessions", "type": "main", "index": 0 }]] },
     "WTS GET /sessions": { "main": [[{ "node": "Split sessoes", "type": "main", "index": 0 }]] },
     "Split sessoes": { "main": [[{ "node": "Mapear -> leads", "type": "main", "index": 0 }]] },
-    "Mapear -> leads": { "main": [[{ "node": "Upsert leads", "type": "main", "index": 0 }]] },
-    "Upsert leads": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
-    "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+    "Mapear -> leads": { "main": [[{ "node": "Agrupar leads", "type": "main", "index": 0 }]] },
+    "Agrupar leads": { "main": [[{ "node": "Upsert leads", "type": "main", "index": 0 }]] },
+    "Upsert leads": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "wts"]

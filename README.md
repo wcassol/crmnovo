@@ -37,6 +37,7 @@ Aplique as migrations no Supabase (psql ou SQL Editor):
 psql "$DATABASE_URL" -f supabase/migrations/0001_initial_schema.sql
 psql "$DATABASE_URL" -f supabase/migrations/0002_triggers_and_views.sql
 psql "$DATABASE_URL" -f supabase/migrations/0003_rls_policies.sql
+psql "$DATABASE_URL" -f supabase/migrations/0004_rpc_functions.sql
 ```
 
 Em seguida, crie usuarios autorizados em Authentication > Users no painel do Supabase.
@@ -55,11 +56,12 @@ Importe os JSONs da pasta `n8n/` em ordem:
 
 Antes de ativar, crie no n8n:
 
-- Credencial Postgres apontando para o Supabase. Substitua `{{SUPABASE_PG_CRED_ID}}` pelo ID dela.
-- Credencial Header Auth para WTS (`Authorization: Bearer ...`). Substitua `{{WTS_AUTH_CRED_ID}}`.
-- Credencial Header Auth para ZapSign. Substitua `{{ZAPSIGN_AUTH_CRED_ID}}`.
+- Credencial Header Auth para ZapSign (`Authorization: Bearer ...`). Substitua `{{ZAPSIGN_AUTH_CRED_ID}}`.
 - Credencial Header Auth para Cal.com. Substitua `{{CALCOM_AUTH_CRED_ID}}`.
-- Variaveis de ambiente no n8n: `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID`.
+- Variaveis de ambiente no n8n: `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_ID` e `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` (para os nos lerem `$env`).
+- Substitua `{{SUPABASE_SERVICE_ROLE_KEY}}` em todos os workflows pelo valor real da `SERVICE_ROLE_KEY` do Supabase (ou crie uma var de ambiente no n8n e troque por `={{$env.SUPABASE_SERVICE_ROLE_KEY}}`).
+
+Os workflows usam `https://supabase.zapconnecta.com/rest/v1/...` (PostgREST) em vez de Postgres direto, ja que o n8n e o compose Supabase ficam em redes Docker isoladas no Easypanel. Toda escrita passa pelo Kong do Supabase com `service_role`.
 
 ## Deploy no Easypanel
 

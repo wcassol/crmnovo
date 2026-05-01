@@ -22,8 +22,11 @@
     {
       "parameters": {
         "url": "=https://api.cal.com/v2/bookings",
-        "qs": {
-          "take": "100"
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "take", "value": "100" }
+          ]
         },
         "sendHeaders": true,
         "headerParameters": {
@@ -44,7 +47,8 @@
         "httpHeaderAuth": { "id": "{{CALCOM_AUTH_CRED_ID}}", "name": "Cal.com Bearer" }
       }
     },
-    { "parameters": { "fieldToSplitOut": "data", "options": {} },
+    {
+      "parameters": { "fieldToSplitOut": "data", "options": {} },
       "id": "splitBookings",
       "name": "Split bookings",
       "type": "n8n-nodes-base.splitOut",
@@ -53,7 +57,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = [];\nconst onlyDigits = (s) => String(s || '').replace(/\\D+/g, '');\nfor (const it of $input.all()) {\n  const b = it.json;\n  const attendee = (b.attendees && b.attendees[0]) || {};\n  let status = 'confirmada';\n  if (b.status === 'cancelled' || b.status === 'CANCELLED') status = 'cancelada';\n  else if (b.status === 'rejected' || b.status === 'REJECTED') status = 'cancelada';\n  else if (b.status === 'no_show' || b.noShow) status = 'no_show';\n  else if (new Date(b.endTime || b.end) < new Date()) status = 'realizada';\n  const meta = b.metadata || {};\n  const telefone = onlyDigits(meta.phone || meta.telefone || '');\n  items.push({ json: {\n    calcom_booking_id: String(b.id || b.uid),\n    nome_cliente: attendee.name || b.title || '',\n    email_cliente: attendee.email || '',\n    telefone_cliente: telefone,\n    data_hora: b.start || b.startTime,\n    status,\n    canal: meta.canal || 'cal.com',\n    owner: (b.user && b.user.email) || meta.owner || ''\n  } });\n}\nreturn items;"
+        "jsCode": "const onlyDigits = (s) => String(s || '').replace(/\\D+/g, '');\nconst out = [];\nfor (const it of $input.all()) {\n  const b = it.json;\n  const attendee = (b.attendees && b.attendees[0]) || {};\n  let status = 'confirmada';\n  if (b.status === 'cancelled' || b.status === 'CANCELLED') status = 'cancelada';\n  else if (b.status === 'rejected' || b.status === 'REJECTED') status = 'cancelada';\n  else if (b.status === 'no_show' || b.noShow) status = 'no_show';\n  else if (new Date(b.endTime || b.end) < new Date()) status = 'realizada';\n  const meta = b.metadata || {};\n  const telefone = onlyDigits(meta.phone || meta.telefone || '');\n  out.push({ json: {\n    calcom_booking_id: String(b.id || b.uid),\n    nome_cliente: attendee.name || b.title || '',\n    email_cliente: attendee.email || '',\n    telefone_cliente: telefone,\n    data_hora: b.start || b.startTime,\n    status,\n    canal: meta.canal || 'cal.com',\n    owner: (b.user && b.user.email) || meta.owner || ''\n  } });\n}\nreturn out;"
       },
       "id": "mapBookings",
       "name": "Mapear bookings",
@@ -63,55 +67,89 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "schema": { "__rl": true, "value": "public", "mode": "list" },
-        "table": { "__rl": true, "value": "reunioes", "mode": "list" },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "matchingColumns": ["calcom_booking_id"]
+        "jsCode": "const arr = $input.all().map(it => it.json);\nreturn [{ json: { rows: arr, count: arr.length } }];"
+      },
+      "id": "agruparReunioes",
+      "name": "Agrupar reunioes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/reunioes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
         },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "on_conflict", "value": "calcom_booking_id" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
         "options": {}
       },
       "id": "upsertReunioes",
       "name": "Upsert reunioes",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1120, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE reunioes r SET tipo_campanha = l.tipo_campanha, lead_id = l.id FROM leads l WHERE r.lead_id IS NULL AND regexp_replace(r.telefone_cliente, '\\D', '', 'g') = regexp_replace(l.telefone, '\\D', '', 'g') AND length(regexp_replace(r.telefone_cliente, '\\D', '', 'g')) >= 10"
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/rpc/vincular_reunioes_leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {}
       },
       "id": "linkLeads",
       "name": "Vincular reunioes a leads",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1340, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
-    },
-    {
-      "parameters": {
-        "jsCode": "return [{ json: { fonte: 'calcom', count: $input.all().length } }];"
-      },
-      "id": "contarRegistros",
-      "name": "Contar registros",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1560, 300]
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "=INSERT INTO sync_log (fonte, status, registros_processados, finalizado_em) VALUES ('calcom', 'sucesso', {{$json.count}}, NOW())"
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/rpc/log_sync",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ p_fonte: 'calcom', p_count: $('Agrupar reunioes').first().json.count }) }}",
+        "options": {}
       },
       "id": "logSync",
       "name": "Log sucesso",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1780, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
     }
   ],
   "connections": {
@@ -119,10 +157,10 @@
     "Quando chamado por outro fluxo": { "main": [[{ "node": "Cal.com GET /bookings", "type": "main", "index": 0 }]] },
     "Cal.com GET /bookings": { "main": [[{ "node": "Split bookings", "type": "main", "index": 0 }]] },
     "Split bookings": { "main": [[{ "node": "Mapear bookings", "type": "main", "index": 0 }]] },
-    "Mapear bookings": { "main": [[{ "node": "Upsert reunioes", "type": "main", "index": 0 }]] },
+    "Mapear bookings": { "main": [[{ "node": "Agrupar reunioes", "type": "main", "index": 0 }]] },
+    "Agrupar reunioes": { "main": [[{ "node": "Upsert reunioes", "type": "main", "index": 0 }]] },
     "Upsert reunioes": { "main": [[{ "node": "Vincular reunioes a leads", "type": "main", "index": 0 }]] },
-    "Vincular reunioes a leads": { "main": [[{ "node": "Contar registros", "type": "main", "index": 0 }]] },
-    "Contar registros": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
+    "Vincular reunioes a leads": { "main": [[{ "node": "Log sucesso", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "calcom"]

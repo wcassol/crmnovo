@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = [];\nfor (const it of $input.all()) {\n  const lead = it.json;\n  const fields = {};\n  for (const f of (lead.field_data || [])) fields[f.name] = (f.values && f.values[0]) || '';\n  const utm = (lead.ad_name || lead.campaign_name || '').toUpperCase();\n  let tipo = 'NAO_CLASSIFICADO';\n  if (utm.includes('UBER') || utm.includes('99') || utm.includes('MOTORISTA') || utm.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (utm.includes('SERVIDOR') || utm.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  items.push({ json: {\n    wts_session_id: 'meta-' + lead.id,\n    nome: fields.full_name || fields.nome || fields.name || '',\n    telefone: fields.phone_number || fields.telefone || '',\n    status: 'Pendente',\n    utm_source: 'FACEBOOK',\n    utm_medium: 'LEAD_AD',\n    utm_campaign: lead.campaign_id || '',\n    utm_content: lead.ad_name || '',\n    primeira_mensagem: '',\n    data_criacao: lead.created_time\n  } });\n}\nreturn items;"
+        "jsCode": "const out = [];\nfor (const it of $input.all()) {\n  const lead = it.json;\n  const fields = {};\n  for (const f of (lead.field_data || [])) fields[f.name] = (f.values && f.values[0]) || '';\n  const utm = (lead.ad_name || lead.campaign_name || '').toUpperCase();\n  let tipo = 'NAO_CLASSIFICADO';\n  if (utm.includes('UBER') || utm.includes('99') || utm.includes('MOTORISTA') || utm.includes('MOBILIDADE')) tipo = 'APP_MOBILIDADE';\n  else if (utm.includes('SERVIDOR') || utm.includes('PUB')) tipo = 'SERVIDOR_PUBLICO';\n  out.push({ json: {\n    wts_session_id: 'meta-' + lead.id,\n    nome: fields.full_name || fields.nome || fields.name || '',\n    telefone: fields.phone_number || fields.telefone || '',\n    status: 'Pendente',\n    utm_source: 'FACEBOOK',\n    utm_medium: 'LEAD_AD',\n    utm_campaign: lead.campaign_id || '',\n    utm_content: lead.ad_name || '',\n    primeira_mensagem: '',\n    data_criacao: lead.created_time\n  } });\n}\nreturn out;"
       },
       "id": "mapLead",
       "name": "Mapear lead",
@@ -70,21 +70,43 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "schema": { "__rl": true, "value": "public", "mode": "list" },
-        "table": { "__rl": true, "value": "leads", "mode": "list" },
-        "columns": {
-          "mappingMode": "autoMapInputData",
-          "matchingColumns": ["wts_session_id"]
+        "jsCode": "const arr = $input.all().map(it => it.json);\nreturn [{ json: { rows: arr } }];"
+      },
+      "id": "agruparLead",
+      "name": "Agrupar lead",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://supabase.zapconnecta.com/rest/v1/leads",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "{{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_ROLE_KEY}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "resolution=merge-duplicates,return=minimal" }
+          ]
         },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "on_conflict", "value": "wts_session_id" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
         "options": {}
       },
       "id": "upsertLead",
       "name": "Upsert lead",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.5,
-      "position": [1340, 300],
-      "credentials": { "postgres": { "id": "{{SUPABASE_PG_CRED_ID}}", "name": "Supabase Postgres" } }
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
     }
   ],
   "connections": {
@@ -92,7 +114,8 @@
     "Extrair leadgen_ids": { "main": [[{ "node": "Filtrar validos", "type": "main", "index": 0 }]] },
     "Filtrar validos": { "main": [[{ "node": "Meta GET /leadgen_id", "type": "main", "index": 0 }]] },
     "Meta GET /leadgen_id": { "main": [[{ "node": "Mapear lead", "type": "main", "index": 0 }]] },
-    "Mapear lead": { "main": [[{ "node": "Upsert lead", "type": "main", "index": 0 }]] }
+    "Mapear lead": { "main": [[{ "node": "Agrupar lead", "type": "main", "index": 0 }]] },
+    "Agrupar lead": { "main": [[{ "node": "Upsert lead", "type": "main", "index": 0 }]] }
   },
   "settings": { "executionOrder": "v1" },
   "tags": ["funil", "meta", "webhook"]
