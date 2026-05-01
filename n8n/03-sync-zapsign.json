@@ -29,7 +29,7 @@
           "parameters": [
             { "name": "page", "value": "1" },
             { "name": "page_size", "value": "100" },
-            { "name": "sort_order", "value": "-created_at" }
+            { "name": "ordering", "value": "-created_at" }
           ]
         },
         "options": {}
