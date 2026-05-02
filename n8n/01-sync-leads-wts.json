@@ -61,45 +61,12 @@
     },
     {
       "parameters": {
-        "url": "https://api.wts.chat/chat/v2/session",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "Bearer pn_WlkjJWQ0vPSG7Pnz3uH8gv1i3B1QBJ82b5ht9oTunUI" }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "PageSize", "value": "100" },
-            { "name": "OrderBy", "value": "CreatedAt" },
-            { "name": "OrderDirection", "value": "DESCENDING" },
-            { "name": "CreatedAt.After", "value": "={{$json.since}}" }
-          ]
-        },
-        "options": {
-          "pagination": {
-            "pagination": {
-              "paginationMode": "updateAParameterInEachRequest",
-              "parameters": {
-                "parameters": [
-                  {
-                    "type": "qs",
-                    "name": "PageNumber",
-                    "value": "={{ $pageCount + 1 }}"
-                  }
-                ]
-              },
-              "completeExpression": "={{ $response.body.hasMorePages === false }}",
-              "limitPagesFetched": false
-            }
-          }
-        }
+        "jsCode": "const since = $input.first()?.json?.since;\nconst token = 'pn_WlkjJWQ0vPSG7Pnz3uH8gv1i3B1QBJ82b5ht9oTunUI';\nconst all = [];\nlet page = 1;\nconst MAX_PAGES = 50;\nwhile (page <= MAX_PAGES) {\n  const qs = {\n    PageSize: 100,\n    PageNumber: page,\n    OrderBy: 'CreatedAt',\n    OrderDirection: 'DESCENDING',\n  };\n  if (since) qs['CreatedAt.After'] = since;\n  const resp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: 'https://api.wts.chat/chat/v2/session',\n    headers: { Authorization: 'Bearer ' + token },\n    qs,\n    json: true,\n  });\n  for (const it of (resp.items || [])) all.push(it);\n  if (!resp.hasMorePages) break;\n  page++;\n}\nreturn all.map(s => ({ json: s }));"
       },
       "id": "fetchSessoes",
       "name": "WTS GET /sessions",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [900, 300]
     },
     {
@@ -189,7 +156,7 @@
     "Quando chamado por outro fluxo": { "main": [[{ "node": "Ultima sync WTS", "type": "main", "index": 0 }]] },
     "Ultima sync WTS": { "main": [[{ "node": "Calcula since", "type": "main", "index": 0 }]] },
     "Calcula since": { "main": [[{ "node": "WTS GET /sessions", "type": "main", "index": 0 }]] },
-    "WTS GET /sessions": { "main": [[{ "node": "Split sessoes", "type": "main", "index": 0 }]] },
+    "WTS GET /sessions": { "main": [[{ "node": "Mapear -> leads", "type": "main", "index": 0 }]] },
     "Split sessoes": { "main": [[{ "node": "Mapear -> leads", "type": "main", "index": 0 }]] },
     "Mapear -> leads": { "main": [[{ "node": "Agrupar leads", "type": "main", "index": 0 }]] },
     "Agrupar leads": { "main": [[{ "node": "Upsert leads", "type": "main", "index": 0 }]] },
