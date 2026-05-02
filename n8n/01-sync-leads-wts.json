@@ -77,7 +77,24 @@
             { "name": "CreatedAt.After", "value": "={{$json.since}}" }
           ]
         },
-        "options": {}
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "qs",
+                    "name": "PageNumber",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "completeExpression": "={{ $response.body.hasMorePages === false }}",
+              "limitPagesFetched": false
+            }
+          }
+        }
       },
       "id": "fetchSessoes",
       "name": "WTS GET /sessions",
