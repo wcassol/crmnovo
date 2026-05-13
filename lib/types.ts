@@ -352,3 +352,61 @@ export const STATUS_HONORARIO_LABELS: Record<StatusHonorario, string> = {
   cancelado: 'Cancelado',
   inadimplente: 'Inadimplente',
 };
+
+// =====================================================================
+// Operacional (Sprint 2)
+// =====================================================================
+
+export type EscopoTag = 'cliente' | 'caso' | 'lead' | 'todos';
+
+export interface Tag {
+  id: number;
+  nome: string;
+  cor: string;
+  escopo: EscopoTag;
+  descricao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Nota {
+  id: number;
+  cliente_id: number | null;
+  caso_id: number | null;
+  autor_id: number | null;
+  conteudo: string;
+  fixada: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Documento {
+  id: number;
+  cliente_id: number | null;
+  caso_id: number | null;
+  nome: string;
+  categoria: string | null;
+  storage_path: string;
+  mime_type: string | null;
+  tamanho_bytes: number | null;
+  descricao: string | null;
+  uploaded_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TipoAgenda = 'audiencia' | 'prazo' | 'reuniao';
+
+export interface AgendaItem {
+  tipo: TipoAgenda;
+  id: number;
+  caso_id: number | null;
+  caso_titulo: string | null;
+  contato_nome: string | null;
+  quando: string;
+  subtipo: string | null;
+  status: string;
+  membro_responsavel_id: number | null;
+  local: string | null;
+  link: string | null;
+}

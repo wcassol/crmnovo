@@ -19,8 +19,11 @@ import { createClient } from '@/lib/supabase/server';
 import {
   buscarAudienciasDoCaso,
   buscarCasoPorId,
+  buscarDocumentosDoCaso,
   buscarHonorariosDoCaso,
+  buscarNotasDoCaso,
   buscarPrazosDoCaso,
+  buscarTagsDoCaso,
 } from '@/lib/queries';
 import { formatBRL, formatDate, formatDateTime } from '@/lib/utils';
 import {
@@ -29,6 +32,9 @@ import {
   STATUS_HONORARIO_LABELS,
   TIPO_HONORARIO_LABELS,
 } from '@/lib/types';
+import { NotasLista } from '@/components/dashboard/notas-lista';
+import { TagsLista } from '@/components/dashboard/tags-lista';
+import { DocumentosLista } from '@/components/dashboard/documentos-lista';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,10 +49,13 @@ export default async function CasoDetalhePage({
   const supabase = createClient();
   const caso = await buscarCasoPorId(supabase, id);
   if (!caso) notFound();
-  const [honorarios, audiencias, prazos] = await Promise.all([
+  const [honorarios, audiencias, prazos, notas, tags, documentos] = await Promise.all([
     buscarHonorariosDoCaso(supabase, id),
     buscarAudienciasDoCaso(supabase, id),
     buscarPrazosDoCaso(supabase, id),
+    buscarNotasDoCaso(supabase, id),
+    buscarTagsDoCaso(supabase, id),
+    buscarDocumentosDoCaso(supabase, id),
   ]);
 
   return (
@@ -62,6 +71,7 @@ export default async function CasoDetalhePage({
         <h1 className="text-xl font-bold text-brand-dark">{caso.titulo}</h1>
         <Badge variant="outline">{FASE_CASO_LABELS[caso.fase]}</Badge>
         <Badge>{STATUS_CASO_LABELS[caso.status]}</Badge>
+        <TagsLista tags={tags} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -274,6 +284,11 @@ export default async function CasoDetalhePage({
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <NotasLista notas={notas} />
+        <DocumentosLista documentos={documentos} />
       </div>
 
       {caso.observacoes && (
