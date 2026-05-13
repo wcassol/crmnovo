@@ -507,3 +507,112 @@ export async function buscarTagsDoCaso(supabase: SupabaseClient, casoId: number)
     .map((r) => r.tag)
     .filter(Boolean);
 }
+
+// =====================================================================
+// Sprint 3: financeiro juridico
+// =====================================================================
+
+export interface FiltroParcelas {
+  situacao?: 'paga' | 'a_vencer' | 'vence_hoje' | 'vencida' | 'TODAS';
+  cliente_id?: number;
+  caso_id?: number;
+  tipo_honorario?: import('./types').TipoHonorario;
+  busca?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function buscarParcelas(
+  supabase: SupabaseClient,
+  f: FiltroParcelas = {},
+) {
+  let q = supabase
+    .from('parcelas_resumo')
+    .select('*', { count: 'exact' })
+    .order('vencimento', { ascending: true });
+  if (f.situacao && f.situacao !== 'TODAS') q = q.eq('situacao', f.situacao);
+  if (f.cliente_id) q = q.eq('cliente_id', f.cliente_id);
+  if (f.caso_id) q = q.eq('caso_id', f.caso_id);
+  if (f.tipo_honorario) q = q.eq('tipo_honorario', f.tipo_honorario);
+  if (f.busca) {
+    q = q.or(
+      `cliente_nome.ilike.%${f.busca}%,caso_titulo.ilike.%${f.busca}%`,
+    );
+  }
+  if (f.from) q = q.gte('vencimento', f.from);
+  if (f.to) q = q.lte('vencimento', f.to);
+  const limit = f.limit ?? 100;
+  const offset = f.offset ?? 0;
+  q = q.range(offset, offset + limit - 1);
+  const { data, count } = await q;
+  return {
+    rows: (data ?? []) as import('./types').ParcelaResumo[],
+    total: count ?? 0,
+  };
+}
+
+export async function buscarTotaisFinanceiroJuridico(supabase: SupabaseClient) {
+  const { data } = await supabase.from('parcelas_resumo').select('valor, situacao');
+  const rows = (data ?? []) as { valor: number; situacao: string }[];
+  const acc = { recebido: 0, a_vencer: 0, vence_hoje: 0, vencido: 0 };
+  for (const r of rows) {
+    const v = Number(r.valor) || 0;
+    if (r.situacao === 'paga') acc.recebido += v;
+    else if (r.situacao === 'a_vencer') acc.a_vencer += v;
+    else if (r.situacao === 'vence_hoje') acc.vence_hoje += v;
+    else if (r.situacao === 'vencida') acc.vencido += v;
+  }
+  return acc;
+}
+
+export async function buscarReceitaPorMes(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('receita_prevista_mes')
+    .select('*')
+    .order('mes', { ascending: true });
+  return (data ?? []) as import('./types').ReceitaMes[];
+}
+
+export async function buscarInadimplencia(supabase: SupabaseClient, limit = 50) {
+  const { data } = await supabase
+    .from('inadimplencia_clientes')
+    .select('*')
+    .order('valor_total_vencido', { ascending: false })
+    .range(0, limit - 1);
+  return (data ?? []) as import('./types').InadimplenciaCliente[];
+}
+
+export async function buscarComissoesDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('comissoes')
+    .select('*, beneficiario:membros(id,nome)')
+    .eq('caso_id', casoId)
+    .order('created_at', { ascending: false });
+  return (data ?? []) as (import('./types').Comissao & {
+    beneficiario?: { id: number; nome: string } | null;
+  })[];
+}
+
+export async function buscarComissoesPendentes(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('comissoes')
+    .select('*, beneficiario:membros(id,nome), casos(id,titulo,cliente_id,clientes(nome))')
+    .eq('status', 'pendente')
+    .order('devida_em', { ascending: true });
+  return data ?? [];
+}
+
+export async function buscarRecibosDoCliente(
+  supabase: SupabaseClient,
+  clienteId: number,
+) {
+  const { data } = await supabase
+    .from('recibos')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .is('cancelado_em', null)
+    .order('emitido_em', { ascending: false });
+  return (data ?? []) as import('./types').Recibo[];
+}

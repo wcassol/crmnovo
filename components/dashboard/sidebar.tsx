@@ -12,6 +12,7 @@ import {
   UserCheck,
   Scale,
   CalendarClock,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,7 @@ const links = [
   { href: '/dashboard/contratos', label: 'Contratos', icon: FileSignature },
   { href: '/dashboard/clientes', label: 'Clientes', icon: UserCheck },
   { href: '/dashboard/casos', label: 'Casos', icon: Scale },
+  { href: '/dashboard/honorarios', label: 'Honorarios', icon: Receipt },
   { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign },
 ];
 

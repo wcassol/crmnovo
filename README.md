@@ -40,6 +40,7 @@ psql "$DATABASE_URL" -f supabase/migrations/0003_rls_policies.sql
 psql "$DATABASE_URL" -f supabase/migrations/0004_rpc_functions.sql
 psql "$DATABASE_URL" -f supabase/migrations/0005_juridico.sql
 psql "$DATABASE_URL" -f supabase/migrations/0006_operacional.sql
+psql "$DATABASE_URL" -f supabase/migrations/0007_financeiro.sql
 ```
 
 A migration 0005 adiciona o nucleo juridico: clientes, casos,
@@ -49,6 +50,11 @@ A migration 0006 adiciona a camada operacional: tags flexiveis com
 escopo, notas internas (sobre cliente ou caso), documentos anexados
 (metadados; arquivos vivem no Supabase Storage no bucket "documentos")
 e a view agenda_completa que une audiencias, prazos e reunioes.
+
+A migration 0007 adiciona o financeiro juridico: recibos, comissoes
+para captadores/parceiros e tres views agregadas (parcelas_resumo,
+receita_prevista_mes, inadimplencia_clientes) usadas pela pagina
+/dashboard/honorarios.
 
 Em seguida, crie usuarios autorizados em Authentication > Users no painel do Supabase.
 
