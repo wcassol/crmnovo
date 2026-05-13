@@ -410,3 +410,110 @@ export interface AgendaItem {
   local: string | null;
   link: string | null;
 }
+
+// =====================================================================
+// Financeiro (Sprint 3)
+// =====================================================================
+
+export type SituacaoParcela = 'paga' | 'a_vencer' | 'vence_hoje' | 'vencida';
+
+export interface ParcelaResumo {
+  id: number;
+  honorario_id: number;
+  numero: number;
+  valor: number;
+  vencimento: string;
+  pago_em: string | null;
+  valor_pago: number | null;
+  forma_pagamento: string | null;
+  observacao: string | null;
+  tipo_honorario: TipoHonorario;
+  status_honorario: StatusHonorario;
+  caso_id: number;
+  caso_titulo: string;
+  cliente_id: number;
+  cliente_nome: string;
+  cliente_telefone: string | null;
+  cliente_email: string | null;
+  situacao: SituacaoParcela;
+  dias_atraso: number;
+}
+
+export interface ReceitaMes {
+  mes_ref: string;
+  mes: string;
+  qtd_parcelas: number;
+  valor_total: number;
+  valor_pago: number | null;
+  valor_vencido: number | null;
+  valor_a_vencer: number | null;
+}
+
+export interface InadimplenciaCliente {
+  cliente_id: number;
+  nome: string;
+  telefone: string | null;
+  email: string | null;
+  qtd_parcelas_vencidas: number;
+  valor_total_vencido: number;
+  parcela_mais_antiga: string;
+  max_dias_atraso: number;
+}
+
+export type TipoComissao = 'captacao' | 'parceria' | 'indicacao' | 'outro';
+export type BaseCalculoComissao =
+  | 'honorario_entrada'
+  | 'honorario_exito'
+  | 'valor_causa'
+  | 'fixo';
+export type StatusComissao = 'pendente' | 'paga' | 'cancelada';
+
+export interface Comissao {
+  id: number;
+  caso_id: number;
+  honorario_id: number | null;
+  beneficiario_membro_id: number | null;
+  beneficiario_externo_nome: string | null;
+  beneficiario_externo_doc: string | null;
+  tipo: TipoComissao;
+  base_calculo: BaseCalculoComissao;
+  percentual: number | null;
+  valor: number;
+  status: StatusComissao;
+  devida_em: string | null;
+  paga_em: string | null;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Recibo {
+  id: number;
+  numero: string;
+  cliente_id: number;
+  caso_id: number | null;
+  valor: number;
+  emitido_em: string;
+  forma_pagamento: string | null;
+  descricao: string | null;
+  storage_path: string | null;
+  parcelas_ids: number[];
+  emitido_por: number | null;
+  cancelado_em: string | null;
+  motivo_cancelamento: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const SITUACAO_PARCELA_LABELS: Record<SituacaoParcela, string> = {
+  paga: 'Paga',
+  a_vencer: 'A vencer',
+  vence_hoje: 'Vence hoje',
+  vencida: 'Vencida',
+};
+
+export const STATUS_COMISSAO_LABELS: Record<StatusComissao, string> = {
+  pendente: 'Pendente',
+  paga: 'Paga',
+  cancelada: 'Cancelada',
+};
