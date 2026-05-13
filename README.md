@@ -41,6 +41,7 @@ psql "$DATABASE_URL" -f supabase/migrations/0004_rpc_functions.sql
 psql "$DATABASE_URL" -f supabase/migrations/0005_juridico.sql
 psql "$DATABASE_URL" -f supabase/migrations/0006_operacional.sql
 psql "$DATABASE_URL" -f supabase/migrations/0007_financeiro.sql
+psql "$DATABASE_URL" -f supabase/migrations/0008_bi.sql
 ```
 
 A migration 0005 adiciona o nucleo juridico: clientes, casos,
@@ -55,6 +56,11 @@ A migration 0007 adiciona o financeiro juridico: recibos, comissoes
 para captadores/parceiros e tres views agregadas (parcelas_resumo,
 receita_prevista_mes, inadimplencia_clientes) usadas pela pagina
 /dashboard/honorarios.
+
+A migration 0008 adiciona views analiticas para a pagina
+/dashboard/bi: taxa de exito por tipo de acao, tempo medio de
+tramitacao, produtividade por advogado, LTV por cliente e forecast
+ponderado de receita (valor_provavel x taxa_exito_historica).
 
 Em seguida, crie usuarios autorizados em Authentication > Users no painel do Supabase.
 
