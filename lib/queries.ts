@@ -1,5 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { TipoCampanha } from './types';
+import {
+  Audiencia,
+  Caso,
+  Cliente,
+  Honorario,
+  Parcela,
+  Prazo,
+  TipoCampanha,
+} from './types';
 import { calcularKPIs, FunilTotais } from './metrics';
 
 export interface PeriodoFiltro {
@@ -254,5 +262,149 @@ export async function buscarCriativosResumo(
       mediaDia: g.porDia.size ? g.total / g.porDia.size : 0,
     })),
     evolucao,
+  };
+}
+
+// =====================================================================
+// Juridico: clientes, casos, honorarios, audiencias, prazos
+// =====================================================================
+
+export interface FiltroClientes {
+  busca?: string;
+  responsavel_id?: number | null;
+  limit?: number;
+  offset?: number;
+}
+
+export async function buscarClientes(supabase: SupabaseClient, f: FiltroClientes = {}) {
+  let q = supabase
+    .from('clientes')
+    .select('*', { count: 'exact' })
+    .order('nome', { ascending: true });
+  if (f.busca) {
+    q = q.or(
+      `nome.ilike.%${f.busca}%,cpf_cnpj.ilike.%${f.busca}%,telefone.ilike.%${f.busca}%,email.ilike.%${f.busca}%`,
+    );
+  }
+  if (f.responsavel_id) q = q.eq('membro_responsavel_id', f.responsavel_id);
+  const limit = f.limit ?? 100;
+  const offset = f.offset ?? 0;
+  q = q.range(offset, offset + limit - 1);
+  const { data, count } = await q;
+  return { rows: (data ?? []) as Cliente[], total: count ?? 0 };
+}
+
+export async function buscarClientePorId(supabase: SupabaseClient, id: number) {
+  const { data } = await supabase.from('clientes').select('*').eq('id', id).maybeSingle();
+  return (data ?? null) as Cliente | null;
+}
+
+export async function buscarCasosDoCliente(supabase: SupabaseClient, clienteId: number) {
+  const { data } = await supabase
+    .from('casos')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('created_at', { ascending: false });
+  return (data ?? []) as Caso[];
+}
+
+export interface FiltroCasos {
+  busca?: string;
+  status?: string;
+  fase?: string;
+  responsavel_id?: number | null;
+  area?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function buscarCasos(supabase: SupabaseClient, f: FiltroCasos = {}) {
+  let q = supabase
+    .from('casos')
+    .select('*, clientes(id,nome,telefone,cpf_cnpj)', { count: 'exact' })
+    .order('updated_at', { ascending: false });
+  if (f.busca) {
+    q = q.or(`titulo.ilike.%${f.busca}%,numero_cnj.ilike.%${f.busca}%`);
+  }
+  if (f.status && f.status !== 'TODOS') q = q.eq('status', f.status);
+  if (f.fase && f.fase !== 'TODAS') q = q.eq('fase', f.fase);
+  if (f.area) q = q.eq('area', f.area);
+  if (f.responsavel_id) q = q.eq('membro_responsavel_id', f.responsavel_id);
+  const limit = f.limit ?? 50;
+  const offset = f.offset ?? 0;
+  q = q.range(offset, offset + limit - 1);
+  const { data, count } = await q;
+  return { rows: (data ?? []) as (Caso & { clientes?: Partial<Cliente> })[], total: count ?? 0 };
+}
+
+export async function buscarCasoPorId(supabase: SupabaseClient, id: number) {
+  const { data } = await supabase
+    .from('casos')
+    .select('*, clientes(id,nome,telefone,cpf_cnpj,email)')
+    .eq('id', id)
+    .maybeSingle();
+  return (data ?? null) as (Caso & { clientes?: Partial<Cliente> }) | null;
+}
+
+export async function buscarHonorariosDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('honorarios')
+    .select('*, parcelas(*)')
+    .eq('caso_id', casoId)
+    .order('id', { ascending: true });
+  return (data ?? []) as (Honorario & { parcelas: Parcela[] })[];
+}
+
+export async function buscarAudienciasDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('audiencias')
+    .select('*')
+    .eq('caso_id', casoId)
+    .order('data_hora', { ascending: true });
+  return (data ?? []) as Audiencia[];
+}
+
+export async function buscarPrazosDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('prazos')
+    .select('*')
+    .eq('caso_id', casoId)
+    .order('data_fatal', { ascending: true });
+  return (data ?? []) as Prazo[];
+}
+
+export async function buscarTotaisJuridico(supabase: SupabaseClient) {
+  const [clientesResp, casosAtivosResp, audienciasResp, prazosResp, inadimplentes] =
+    await Promise.all([
+      supabase.from('clientes').select('id', { count: 'exact', head: true }),
+      supabase.from('casos').select('id', { count: 'exact', head: true }).eq('status', 'ativo'),
+      supabase
+        .from('audiencias')
+        .select('id', { count: 'exact', head: true })
+        .gte('data_hora', new Date().toISOString())
+        .lte(
+          'data_hora',
+          new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        )
+        .eq('status', 'agendada'),
+      supabase
+        .from('prazos')
+        .select('id', { count: 'exact', head: true })
+        .is('concluido_em', null)
+        .lte(
+          'data_fatal',
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        ),
+      supabase
+        .from('honorarios')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'inadimplente'),
+    ]);
+  return {
+    clientes: clientesResp.count ?? 0,
+    casosAtivos: casosAtivosResp.count ?? 0,
+    audienciasProximas30Dias: audienciasResp.count ?? 0,
+    prazosProximos7Dias: prazosResp.count ?? 0,
+    honorariosInadimplentes: inadimplentes.count ?? 0,
   };
 }

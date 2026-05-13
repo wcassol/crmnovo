@@ -78,6 +78,33 @@ export function safeDiv(a: number, b: number): number {
   return a / b;
 }
 
+export function formatPhone(value: string | null | undefined): string {
+  if (!value) return '-';
+  const digits = String(value).replace(/\D+/g, '');
+  if (digits.length === 13 && digits.startsWith('55')) {
+    return `+55 (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return value;
+}
+
+export function formatCpfCnpj(value: string | null | undefined): string {
+  if (!value) return '-';
+  const d = String(value).replace(/\D+/g, '');
+  if (d.length === 11) {
+    return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  }
+  if (d.length === 14) {
+    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+  }
+  return value;
+}
+
 export function dateRangeMes(): { from: string; to: string } {
   const agora = new Date();
   const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1);
