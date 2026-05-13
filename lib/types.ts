@@ -517,3 +517,75 @@ export const STATUS_COMISSAO_LABELS: Record<StatusComissao, string> = {
   paga: 'Paga',
   cancelada: 'Cancelada',
 };
+
+// =====================================================================
+// BI (Sprint 4)
+// =====================================================================
+
+export interface BiTaxaExito {
+  tipo_acao: string;
+  total_casos: number;
+  encerrados: number;
+  ganhos: number;
+  perdidos: number;
+  em_andamento: number;
+  taxa_exito: number | null;
+  valor_medio_exito: number | null;
+  valor_total_exito: number | null;
+}
+
+export interface BiTempoTramitacao {
+  tipo_acao: string;
+  qtd_casos: number;
+  dias_medio: number | null;
+  dias_minimo: number | null;
+  dias_maximo: number | null;
+  dias_mediana: number | null;
+}
+
+export interface BiProdutividade {
+  membro_id: number;
+  nome: string;
+  oab: string | null;
+  cargo: string | null;
+  casos_total: number;
+  casos_ativos: number;
+  casos_ganhos: number;
+  casos_perdidos: number;
+  taxa_exito: number | null;
+  valor_recuperado: number;
+  audiencias_proximas_30d: number;
+  prazos_proximos_7d: number;
+}
+
+export interface BiLtvCliente {
+  cliente_id: number;
+  nome: string;
+  telefone: string | null;
+  qtd_casos: number;
+  casos_ganhos: number;
+  honorarios_contratados: number;
+  honorarios_pagos: number;
+  cliente_desde: string;
+  dias_relacionamento: number;
+}
+
+export interface BiForecast {
+  tipo_acao: string;
+  qtd_casos_ativos: number;
+  valor_provavel_total: number;
+  taxa_exito_historica: number;
+  forecast_ponderado: number;
+}
+
+export interface BiFunilJuridico {
+  total_leads: number;
+  total_clientes: number;
+  total_casos: number;
+  casos_ativos: number;
+  casos_ganhos: number;
+  casos_perdidos: number;
+  taxa_lead_cliente: number;
+  casos_por_cliente: number;
+  taxa_exito_geral: number;
+}

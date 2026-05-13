@@ -616,3 +616,54 @@ export async function buscarRecibosDoCliente(
     .order('emitido_em', { ascending: false });
   return (data ?? []) as import('./types').Recibo[];
 }
+
+// =====================================================================
+// Sprint 4: BI juridico
+// =====================================================================
+
+export async function buscarBiTaxaExito(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('bi_taxa_exito_por_tipo')
+    .select('*')
+    .order('total_casos', { ascending: false });
+  return (data ?? []) as import('./types').BiTaxaExito[];
+}
+
+export async function buscarBiTempoTramitacao(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('bi_tempo_tramitacao')
+    .select('*')
+    .order('dias_medio', { ascending: true });
+  return (data ?? []) as import('./types').BiTempoTramitacao[];
+}
+
+export async function buscarBiProdutividade(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('bi_produtividade_membro')
+    .select('*');
+  return (data ?? []) as import('./types').BiProdutividade[];
+}
+
+export async function buscarBiLtvCliente(supabase: SupabaseClient, limit = 10) {
+  const { data } = await supabase
+    .from('bi_ltv_cliente')
+    .select('*')
+    .order('honorarios_pagos', { ascending: false })
+    .range(0, limit - 1);
+  return (data ?? []) as import('./types').BiLtvCliente[];
+}
+
+export async function buscarBiForecast(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('bi_forecast_receita')
+    .select('*');
+  return (data ?? []) as import('./types').BiForecast[];
+}
+
+export async function buscarBiFunilJuridico(supabase: SupabaseClient) {
+  const { data } = await supabase
+    .from('bi_funil_juridico')
+    .select('*')
+    .maybeSingle();
+  return (data ?? null) as import('./types').BiFunilJuridico | null;
+}

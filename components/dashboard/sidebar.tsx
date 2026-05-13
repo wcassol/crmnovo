@@ -13,6 +13,7 @@ import {
   Scale,
   CalendarClock,
   Receipt,
+  TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +27,7 @@ const links = [
   { href: '/dashboard/clientes', label: 'Clientes', icon: UserCheck },
   { href: '/dashboard/casos', label: 'Casos', icon: Scale },
   { href: '/dashboard/honorarios', label: 'Honorarios', icon: Receipt },
+  { href: '/dashboard/bi', label: 'BI juridico', icon: TrendingUp },
   { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign },
 ];
 
