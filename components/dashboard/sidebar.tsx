@@ -9,6 +9,8 @@ import {
   Users,
   FileSignature,
   DollarSign,
+  UserCheck,
+  Scale,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +20,8 @@ const links = [
   { href: '/dashboard/criativos', label: 'Criativos', icon: Sparkles },
   { href: '/dashboard/leads', label: 'Leads', icon: Users },
   { href: '/dashboard/contratos', label: 'Contratos', icon: FileSignature },
+  { href: '/dashboard/clientes', label: 'Clientes', icon: UserCheck },
+  { href: '/dashboard/casos', label: 'Casos', icon: Scale },
   { href: '/dashboard/financeiro', label: 'Financeiro', icon: DollarSign },
 ];
 

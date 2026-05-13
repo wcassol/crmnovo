@@ -38,7 +38,11 @@ psql "$DATABASE_URL" -f supabase/migrations/0001_initial_schema.sql
 psql "$DATABASE_URL" -f supabase/migrations/0002_triggers_and_views.sql
 psql "$DATABASE_URL" -f supabase/migrations/0003_rls_policies.sql
 psql "$DATABASE_URL" -f supabase/migrations/0004_rpc_functions.sql
+psql "$DATABASE_URL" -f supabase/migrations/0005_juridico.sql
 ```
+
+A migration 0005 adiciona o nucleo juridico: clientes, casos,
+honorarios, parcelas, audiencias, prazos e membros (equipe interna).
 
 Em seguida, crie usuarios autorizados em Authentication > Users no painel do Supabase.
 

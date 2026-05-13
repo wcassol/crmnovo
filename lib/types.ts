@@ -135,3 +135,220 @@ export interface KPIData {
   receitaEntrada: number;
   receitaPotencial: number;
 }
+
+// =====================================================================
+// Juridico
+// =====================================================================
+
+export type TipoPessoa = 'PF' | 'PJ';
+
+export type FaseCaso =
+  | 'pre_processual'
+  | 'inicial'
+  | 'contestacao'
+  | 'instrucao'
+  | 'sentenca'
+  | 'recurso'
+  | 'transitado'
+  | 'execucao'
+  | 'arquivado';
+
+export type StatusCaso =
+  | 'ativo'
+  | 'suspenso'
+  | 'arquivado'
+  | 'ganho'
+  | 'perdido'
+  | 'acordo';
+
+export type ResultadoCaso =
+  | 'procedente'
+  | 'improcedente'
+  | 'parcial'
+  | 'acordo'
+  | 'extinto';
+
+export type TipoHonorario =
+  | 'entrada'
+  | 'exito'
+  | 'recursal'
+  | 'sucumbencia'
+  | 'fixo'
+  | 'consultivo';
+
+export type StatusHonorario =
+  | 'pendente'
+  | 'parcialmente_pago'
+  | 'quitado'
+  | 'cancelado'
+  | 'inadimplente';
+
+export type StatusAudiencia =
+  | 'agendada'
+  | 'realizada'
+  | 'cancelada'
+  | 'adiada'
+  | 'redesignada';
+
+export type ModalidadeAudiencia = 'presencial' | 'virtual' | 'hibrida';
+
+export type TipoPrazo = 'fatal' | 'comum' | 'administrativo' | 'interno';
+
+export interface Membro {
+  id: number;
+  auth_user_id: string | null;
+  nome: string;
+  email: string | null;
+  oab: string | null;
+  cargo: string | null;
+  especialidade: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Cliente {
+  id: number;
+  tipo_pessoa: TipoPessoa;
+  nome: string;
+  cpf_cnpj: string | null;
+  rg: string | null;
+  data_nascimento: string | null;
+  estado_civil: string | null;
+  profissao: string | null;
+  email: string | null;
+  telefone: string | null;
+  cep: string | null;
+  endereco: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
+  pix_chave: string | null;
+  pix_tipo: string | null;
+  observacoes: string | null;
+  lead_id: number | null;
+  membro_responsavel_id: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Caso {
+  id: number;
+  cliente_id: number;
+  contrato_id: number | null;
+  titulo: string;
+  tipo_acao: string | null;
+  area: string | null;
+  numero_cnj: string | null;
+  vara: string | null;
+  comarca: string | null;
+  uf: string | null;
+  valor_causa: number | null;
+  valor_provavel_exito: number | null;
+  fase: FaseCaso;
+  status: StatusCaso;
+  data_distribuicao: string | null;
+  data_sentenca: string | null;
+  data_transito: string | null;
+  resultado: ResultadoCaso | null;
+  membro_responsavel_id: number | null;
+  observacoes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Honorario {
+  id: number;
+  caso_id: number;
+  tipo: TipoHonorario;
+  descricao: string | null;
+  valor_total: number;
+  percentual: number | null;
+  base_calculo: number | null;
+  status: StatusHonorario;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Parcela {
+  id: number;
+  honorario_id: number;
+  numero: number;
+  valor: number;
+  vencimento: string;
+  pago_em: string | null;
+  valor_pago: number | null;
+  forma_pagamento: string | null;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Audiencia {
+  id: number;
+  caso_id: number;
+  data_hora: string;
+  tipo: string | null;
+  modalidade: ModalidadeAudiencia;
+  local_endereco: string | null;
+  link_video: string | null;
+  membro_responsavel_id: number | null;
+  status: StatusAudiencia;
+  observacoes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Prazo {
+  id: number;
+  caso_id: number;
+  descricao: string;
+  tipo: TipoPrazo;
+  data_fatal: string;
+  membro_responsavel_id: number | null;
+  concluido_em: string | null;
+  concluido_por: number | null;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const FASE_CASO_LABELS: Record<FaseCaso, string> = {
+  pre_processual: 'Pre-processual',
+  inicial: 'Inicial',
+  contestacao: 'Contestacao',
+  instrucao: 'Instrucao',
+  sentenca: 'Sentenca',
+  recurso: 'Recurso',
+  transitado: 'Transitado em julgado',
+  execucao: 'Execucao',
+  arquivado: 'Arquivado',
+};
+
+export const STATUS_CASO_LABELS: Record<StatusCaso, string> = {
+  ativo: 'Ativo',
+  suspenso: 'Suspenso',
+  arquivado: 'Arquivado',
+  ganho: 'Ganho',
+  perdido: 'Perdido',
+  acordo: 'Acordo',
+};
+
+export const TIPO_HONORARIO_LABELS: Record<TipoHonorario, string> = {
+  entrada: 'Entrada',
+  exito: 'Exito',
+  recursal: 'Recursal',
+  sucumbencia: 'Sucumbencia',
+  fixo: 'Fixo',
+  consultivo: 'Consultivo',
+};
+
+export const STATUS_HONORARIO_LABELS: Record<StatusHonorario, string> = {
+  pendente: 'Pendente',
+  parcialmente_pago: 'Parcialmente pago',
+  quitado: 'Quitado',
+  cancelado: 'Cancelado',
+  inadimplente: 'Inadimplente',
+};
