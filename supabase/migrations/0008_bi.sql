@@ -31,7 +31,7 @@ SELECT COALESCE(NULLIF(c.tipo_acao, ''), 'Nao informado') AS tipo_acao,
        sum(c.valor_provavel_exito) FILTER (WHERE c.status IN ('ganho','acordo'))
          AS valor_total_exito
   FROM casos c
- GROUP BY tipo_acao
+ GROUP BY COALESCE(NULLIF(c.tipo_acao, ''), 'Nao informado')
  ORDER BY total_casos DESC;
 
 -- ---------------------------------------------------------------------
@@ -51,7 +51,7 @@ SELECT COALESCE(NULLIF(tipo_acao, ''), 'Nao informado') AS tipo_acao,
  WHERE data_distribuicao IS NOT NULL
    AND data_transito IS NOT NULL
    AND status IN ('ganho','perdido','arquivado','acordo')
- GROUP BY tipo_acao
+ GROUP BY COALESCE(NULLIF(tipo_acao, ''), 'Nao informado')
 HAVING count(*) >= 1
  ORDER BY dias_medio;
 
@@ -144,7 +144,7 @@ SELECT COALESCE(NULLIF(c.tipo_acao, ''), 'Nao informado') AS tipo_acao,
   LEFT JOIN taxas t ON t.tipo_acao = COALESCE(NULLIF(c.tipo_acao, ''), 'Nao informado')
  WHERE c.status = 'ativo'
    AND c.valor_provavel_exito IS NOT NULL
- GROUP BY tipo_acao, t.taxa
+ GROUP BY COALESCE(NULLIF(c.tipo_acao, ''), 'Nao informado'), t.taxa
  ORDER BY forecast_ponderado DESC;
 
 -- ---------------------------------------------------------------------
