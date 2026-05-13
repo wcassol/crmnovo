@@ -19,6 +19,9 @@ import { createClient } from '@/lib/supabase/server';
 import {
   buscarCasosDoCliente,
   buscarClientePorId,
+  buscarDocumentosDoCliente,
+  buscarNotasDoCliente,
+  buscarTagsDoCliente,
 } from '@/lib/queries';
 import {
   formatBRL,
@@ -27,6 +30,9 @@ import {
   formatPhone,
 } from '@/lib/utils';
 import { FASE_CASO_LABELS, STATUS_CASO_LABELS } from '@/lib/types';
+import { NotasLista } from '@/components/dashboard/notas-lista';
+import { TagsLista } from '@/components/dashboard/tags-lista';
+import { DocumentosLista } from '@/components/dashboard/documentos-lista';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,11 +47,16 @@ export default async function ClienteDetalhePage({
   const supabase = createClient();
   const cliente = await buscarClientePorId(supabase, id);
   if (!cliente) notFound();
-  const casos = await buscarCasosDoCliente(supabase, id);
+  const [casos, notas, tags, documentos] = await Promise.all([
+    buscarCasosDoCliente(supabase, id),
+    buscarNotasDoCliente(supabase, id),
+    buscarTagsDoCliente(supabase, id),
+    buscarDocumentosDoCliente(supabase, id),
+  ]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Link
           href="/dashboard/clientes"
           className="text-xs text-muted-foreground hover:underline"
@@ -57,6 +68,7 @@ export default async function ClienteDetalhePage({
         <Badge variant={cliente.tipo_pessoa === 'PJ' ? 'default' : 'outline'}>
           {cliente.tipo_pessoa}
         </Badge>
+        <TagsLista tags={tags} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -177,6 +189,11 @@ export default async function ClienteDetalhePage({
           )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <NotasLista notas={notas} />
+        <DocumentosLista documentos={documentos} />
+      </div>
     </div>
   );
 }

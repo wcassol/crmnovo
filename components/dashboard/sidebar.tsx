@@ -11,11 +11,13 @@ import {
   DollarSign,
   UserCheck,
   Scale,
+  CalendarClock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const links = [
   { href: '/dashboard', label: 'Visao geral', icon: LayoutDashboard },
+  { href: '/dashboard/agenda', label: 'Agenda', icon: CalendarClock },
   { href: '/dashboard/campanhas', label: 'Campanhas', icon: Megaphone },
   { href: '/dashboard/criativos', label: 'Criativos', icon: Sparkles },
   { href: '/dashboard/leads', label: 'Leads', icon: Users },

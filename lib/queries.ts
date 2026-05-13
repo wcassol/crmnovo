@@ -408,3 +408,102 @@ export async function buscarTotaisJuridico(supabase: SupabaseClient) {
     honorariosInadimplentes: inadimplentes.count ?? 0,
   };
 }
+
+// =====================================================================
+// Sprint 2: agenda, notas, documentos, tags
+// =====================================================================
+
+export interface FiltroAgenda {
+  tipo?: 'audiencia' | 'prazo' | 'reuniao' | 'TODOS';
+  responsavel_id?: number;
+  from?: string;
+  to?: string;
+}
+
+export async function buscarAgenda(
+  supabase: SupabaseClient,
+  filtro: FiltroAgenda = {},
+) {
+  let q = supabase.from('agenda_completa').select('*').order('quando', { ascending: true });
+  if (filtro.tipo && filtro.tipo !== 'TODOS') q = q.eq('tipo', filtro.tipo);
+  if (filtro.responsavel_id) q = q.eq('membro_responsavel_id', filtro.responsavel_id);
+  if (filtro.from) q = q.gte('quando', filtro.from);
+  if (filtro.to) q = q.lte('quando', filtro.to);
+  const { data } = await q;
+  return (data ?? []) as import('./types').AgendaItem[];
+}
+
+export async function buscarNotasDoCliente(supabase: SupabaseClient, clienteId: number) {
+  const { data } = await supabase
+    .from('notas')
+    .select('*, autor:membros(id,nome)')
+    .eq('cliente_id', clienteId)
+    .order('fixada', { ascending: false })
+    .order('created_at', { ascending: false });
+  return (data ?? []) as (import('./types').Nota & {
+    autor?: { id: number; nome: string } | null;
+  })[];
+}
+
+export async function buscarNotasDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('notas')
+    .select('*, autor:membros(id,nome)')
+    .eq('caso_id', casoId)
+    .order('fixada', { ascending: false })
+    .order('created_at', { ascending: false });
+  return (data ?? []) as (import('./types').Nota & {
+    autor?: { id: number; nome: string } | null;
+  })[];
+}
+
+export async function buscarDocumentosDoCliente(
+  supabase: SupabaseClient,
+  clienteId: number,
+) {
+  const { data } = await supabase
+    .from('documentos')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('created_at', { ascending: false });
+  return (data ?? []) as import('./types').Documento[];
+}
+
+export async function buscarDocumentosDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('documentos')
+    .select('*')
+    .eq('caso_id', casoId)
+    .order('created_at', { ascending: false });
+  return (data ?? []) as import('./types').Documento[];
+}
+
+export async function buscarTags(
+  supabase: SupabaseClient,
+  escopo?: import('./types').EscopoTag,
+) {
+  let q = supabase.from('tags').select('*').order('nome', { ascending: true });
+  if (escopo) q = q.in('escopo', [escopo, 'todos']);
+  const { data } = await q;
+  return (data ?? []) as import('./types').Tag[];
+}
+
+export async function buscarTagsDoCliente(supabase: SupabaseClient, clienteId: number) {
+  const { data } = await supabase
+    .from('cliente_tags')
+    .select('tag:tags(*)')
+    .eq('cliente_id', clienteId);
+  return ((data ?? []) as unknown as { tag: import('./types').Tag }[])
+    .map((r) => r.tag)
+    .filter(Boolean);
+}
+
+export async function buscarTagsDoCaso(supabase: SupabaseClient, casoId: number) {
+  const { data } = await supabase
+    .from('caso_tags')
+    .select('tag:tags(*)')
+    .eq('caso_id', casoId);
+  return ((data ?? []) as unknown as { tag: import('./types').Tag }[])
+    .map((r) => r.tag)
+    .filter(Boolean);
+}
